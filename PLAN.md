@@ -118,9 +118,11 @@ src/
 - Manual: run the *Manual checks → Delete and search* list.
 
 **8. Drag to reorder** (@dnd-kit)
-- Unit: the reorder function produces the correct `order` values.
-- Component tests: keyboard reorder (Space, then arrow, then Space) moves the page and the order survives a simulated reload; reordering is disabled while a search filter is active, to avoid confusing results.
-- Manual: drag with the mouse and reload.
+- **Decided at step 8:** a ⋮⋮ grip at the left of each row is the only drag handle, for both mouse and keyboard, because the page name button already uses Space/Enter to open the page. The grip shows on hover, on focus and on the open page's row, like the trash button, and it's hidden while searching. Page names are indented to make room for it. A drag starts only after the pointer moves 4 px, so a click on the grip does nothing. Screen-reader announcements use page names and positions.
+- Unit: the reorder function produces the correct `order` values; `usePages.reorderPage` saves the new order and restores the old one if the save fails.
+- Component tests: keyboard reorder (Space, then arrow, then Space) moves the page and the order survives a simulated reload; Escape cancels; reordering is disabled while a search filter is active, to avoid confusing results.
+- *Test note:* jsdom has no layout, so the keyboard tests stack the rows 32 px apart with a mock (`src/test/stackRows.ts`).
+- Manual: run the *Manual checks → Drag to reorder* list.
 
 **9. Dark mode**
 - Colours come only from CSS variables in `theme.css`, so dark mode means swapping the tokens.
@@ -176,6 +178,16 @@ Rerun the same way every time: `npm run dev`, open http://localhost:5173, and st
 7. **Search:** type `GRO` to find "Groceries". Nonsense text shows "No pages match". Escape brings the full list back.
 8. **New page while filtering:** with a search active, press "+ New page". The search clears and the new page shows.
 9. **Screen reader (Narrator):** the dialog title is read when it opens; the trash button reads as *Delete "Title"*.
+
+### Drag to reorder (step 8)
+1. **Grip:** hover a row and the ⋮⋮ grip appears at the left. It's always visible on the open page's row. Tab reaches it before the page name.
+2. **Mouse:** with 3 pages, drag the top one by its grip to the bottom. The others slide out of the way, and the dragged row looks lifted. Reload: the new order is kept.
+3. **Click isn't a drag:** click the grip without moving. Nothing opens and nothing moves.
+4. **Keyboard:** Tab to a grip, press Space, then Down, then Space. The page moves down one place, and focus stays on its grip.
+5. **Cancel:** pick up with Space, press Down, then Escape. The page goes back where it was.
+6. **Screen reader (Narrator):** on a grip you hear *Reorder "Title"* and the instructions. Picking up, moving and dropping each announce the page name and position (e.g. *"Groceries moved to position 2 of 3"*).
+7. **While searching:** type in the search box. There are no grips. Clear the search and they come back.
+8. **New page after reorder:** reorder, then press "+ New page". The new page goes to the bottom.
 
 ## Verification
 - Run `npm test` for all unit and component tests (Vitest) and `npm run dev` to try the app at http://localhost:5173.
