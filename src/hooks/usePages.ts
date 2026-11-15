@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createPage, listPages } from '../lib/storage';
-import type { Page } from '../types';
+import type { Block, Page } from '../types';
 
 export const SELECTED_PAGE_KEY = 'notes.selectedPageId';
 
@@ -66,5 +66,10 @@ export function usePages() {
     setPages((prev) => prev.map((p) => (p.id === id ? { ...p, title } : p)));
   }, []);
 
-  return { pages, selectedId, loading, addPage, selectPage, renamePage };
+  /** Changes a page's blocks in memory only. App saves them via useAutosave. */
+  const setBlocks = useCallback((id: string, blocks: Block[]) => {
+    setPages((prev) => prev.map((p) => (p.id === id ? { ...p, blocks } : p)));
+  }, []);
+
+  return { pages, selectedId, loading, addPage, selectPage, renamePage, setBlocks };
 }

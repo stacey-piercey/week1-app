@@ -1,12 +1,14 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import Editor, { type EditorHandle } from './components/Editor';
 import PageTitle from './components/PageTitle';
 import SaveStatus from './components/SaveStatus';
 import Sidebar from './components/Sidebar';
 import { useAutosave } from './hooks/useAutosave';
 import { usePages } from './hooks/usePages';
+import type { Block } from './types';
 
 export default function App() {
-  const { pages, selectedId, loading, addPage, selectPage, renamePage } = usePages();
+  const { pages, selectedId, loading, addPage, selectPage, renamePage, setBlocks } = usePages();
   const selected = pages.find((p) => p.id === selectedId);
   const autosave = useAutosave();
   const { flush, schedule, clearStatus } = autosave;
@@ -41,6 +43,17 @@ export default function App() {
     [renamePage, schedule],
   );
 
+  // Blocks share the title's save path: one debounced save per page.
+  const handleBlocksChange = useCallback(
+    (id: string, blocks: Block[]) => {
+      setBlocks(id, blocks);
+      schedule(id, { blocks });
+    },
+    [setBlocks, schedule],
+  );
+
+  const editorRef = useRef<EditorHandle>(null);
+
   return (
     <div className="app">
       <Sidebar
@@ -58,9 +71,15 @@ export default function App() {
               <PageTitle
                 value={selected.title}
                 onChange={(title) => handleTitleChange(selected.id, title)}
-                // Step 5 makes Enter move focus to the first block.
-                onEnter={() => {}}
+                onEnter={() => editorRef.current?.focusStart()}
                 autoFocus={selected.id === newPageId}
+              />
+              <Editor
+                // A fresh editor per page, so no cursor state carries over.
+                key={selected.id}
+                ref={editorRef}
+                blocks={selected.blocks}
+                onChange={(blocks) => handleBlocksChange(selected.id, blocks)}
               />
             </>
           ) : (

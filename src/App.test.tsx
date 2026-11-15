@@ -15,6 +15,7 @@ async function seedTwoPages() {
 }
 
 const titleField = () => screen.getByRole('textbox', { name: 'Page title' });
+const blockFields = () => screen.getAllByRole('textbox', { name: 'Paragraph' }) as HTMLTextAreaElement[];
 
 describe('App', () => {
   it('renders the app name and the empty state', async () => {
@@ -122,6 +123,21 @@ describe('App', () => {
       expect(titleField()).toHaveFocus();
     });
 
+    it('Enter in the title puts the cursor at the start of the first block', async () => {
+      const user = userEvent.setup();
+      const { alpha } = await seedTwoPages();
+      await updatePage(alpha.id, { blocks: [{ id: 'b1', type: 'p', text: 'Body' }] });
+      render(<App />);
+      await screen.findByRole('button', { name: 'Alpha' });
+
+      await user.type(titleField(), '{Enter}');
+
+      const first = blockFields()[0];
+      expect(first).toHaveFocus();
+      expect(first.selectionStart).toBe(0);
+      expect(titleField()).toHaveValue('Alpha'); // Enter didn't change the title
+    });
+
     it('opening an existing page does not move focus to the title', async () => {
       const user = userEvent.setup();
       await seedTwoPages();
@@ -138,7 +154,7 @@ describe('App', () => {
   // Real timers here: Testing Library's findBy/waitFor hang under Vitest fake
   // timers. The exact 500 ms timing is covered in useAutosave.test.ts.
   describe('autosave', () => {
-    it('a saved title is still there after a reload', async () => {
+    it('a saved title and blocks are still there after a reload', async () => {
       const user = userEvent.setup();
       await seedTwoPages();
       const first = render(<App />);
@@ -147,6 +163,9 @@ describe('App', () => {
       await user.clear(titleField());
       await user.type(titleField(), 'Groceries');
       expect(screen.getByRole('status')).toHaveTextContent('Saving…');
+      // Three paragraphs, then an edit in the middle one.
+      await user.type(blockFields()[0], 'Milk{Enter}Eggs{Enter}Bread');
+      await user.type(blockFields()[1], ' (6)');
 
       // The real 500 ms delay passes, then the save finishes.
       await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 2000 });
@@ -158,6 +177,7 @@ describe('App', () => {
 
       expect(await screen.findByRole('button', { name: 'Groceries' })).toHaveAttribute('aria-current', 'page');
       expect(titleField()).toHaveValue('Groceries');
+      expect(blockFields().map((f) => f.value)).toEqual(['Milk', 'Eggs (6)', 'Bread']);
     });
 
     it('switching pages saves the edit at once, without waiting 500 ms', async () => {

@@ -6,7 +6,7 @@ You want a small notes app in this repo, which exists only for this app. It has 
 - **Blocks:** paragraph, H1–H3, bulleted list, numbered list, to-do, quote, divider, code.
 - **Sidebar:** list, add and open pages, plus delete (with confirm), drag to reorder, and search.
 - **Location:** the repo root.
-- **Testing:** Vitest only for now. There are no real-browser (Playwright) tests; each feature instead ends with a short manual check in the browser. We'll revisit Playwright at the block editor step (step 5), because jsdom's support for cursor position is weak there.
+- **Testing:** Vitest only. There are no real-browser (Playwright) tests; each feature instead ends with a short manual check in the browser. **Decision at step 5:** No Playwright for step 5. Reason: I'm an experienced UI tester; cursor behavior in wrapped text is covered by the manual checklist (see *Manual checks*).
 
 Node 24 and npm 11 are already installed.
 
@@ -23,7 +23,7 @@ Node 24 and npm 11 are already installed.
 
 No editor library: I'll build the block editor myself, with one editable element per block and plain text only. Inline bold and italic are **out of scope** for v1.
 
-**Revisit at step 5:** jsdom (Vitest's simulated browser) has weak support for cursor position in editable text. If the block editor's Enter, Backspace or arrow-key behaviour proves hard to test there, I'll propose adding Playwright (about 150–250 MB browser download) and ask first.
+**Decided at step 5:** no Playwright. jsdom covers the cursor logic (split, merge, focus moves). The behaviour that needs real layout is covered by *Manual checks → Block editor*.
 
 ## Data model
 ```ts
@@ -91,7 +91,7 @@ src/
 **5. Block editor core** (paragraphs only)
 - Unit (`lib/blocks.ts`): split a block at the cursor; merge with the previous block; delete an empty block.
 - Component tests: Enter in the page title moves focus to the first block; Enter creates a new block below and focuses it; Backspace at the start merges up; Up and Down arrows move between blocks; the last block can't be deleted.
-- Manual: type 3 paragraphs, edit in the middle of one, reload, and check the text and order.
+- Manual: run the *Manual checks → Block editor* list.
 
 **6. Block types**
 - Slash menu: type `/` to see a filtered list, then pick with arrow keys + Enter or a click.
@@ -124,6 +124,22 @@ src/
 - No nested pages, images, inline formatting, export or multi-device sync in v1.
 - Autosave debounce of 500 ms, with a small "Saved" indicator near the title.
 - Layout: a fixed sidebar of about 240 px on the left and the editor on the right, centred, with a max width of about 720 px.
+
+## Manual checks
+Rerun the same way every time: `npm run dev`, open http://localhost:5173, and start with a new page.
+
+### Block editor (step 5)
+1. **Title to first block:** click in the title and press Enter. The cursor moves to the first block.
+2. **Split:** type "Hello world", click between "Hello" and " world", and press Enter. You get two blocks, "Hello" and " world", with the cursor at the start of the second.
+3. **Merge:** press Backspace. The blocks rejoin as "Hello world", with the cursor between "Hello" and " world".
+4. **Wrapped text, Up/Down inside the paragraph:** type a paragraph long enough to wrap onto at least 3 lines, with a block above and below it. Put the cursor on the middle line: Up and Down move one line within the paragraph and don't leave it.
+5. **Wrapped text, leaving the paragraph:** from the paragraph's first line, Up goes to the block above. From its last line, Down goes to the block below.
+6. **Horizontal position:** put the cursor near the middle of a line and press Up/Down across blocks. It lands near the same horizontal position, not always at the start or end.
+7. **Grows to fit:** while you type the wrapped paragraph, the block grows line by line and never shows a scrollbar or hides text. Narrow the window: it re-wraps and still fits.
+8. **Cursor stays put:** type quickly in the middle of a block. The cursor never jumps to the end.
+9. **Last block:** clear all blocks down to one empty block, then press Backspace. The block stays.
+10. **Reload:** type 3 paragraphs, edit the middle one, wait for "Saved", and reload. The text and order are unchanged.
+11. *(Optional, if you have a Japanese or other IME installed)* While composing with the IME, press Enter to confirm a word. It confirms the word and doesn't split the block.
 
 ## Verification
 - Run `npm test` for all unit and component tests (Vitest) and `npm run dev` to try the app at http://localhost:5173.
