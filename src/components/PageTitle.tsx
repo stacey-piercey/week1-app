@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import { useFitHeight } from '../hooks/useFitHeight';
 
 interface PageTitleProps {
   value: string;
@@ -14,23 +15,7 @@ interface PageTitleProps {
  */
 export default function PageTitle({ value, onChange, onEnter, autoFocus = false }: PageTitleProps) {
   const ref = useRef<HTMLTextAreaElement>(null);
-
-  const fitHeight = useCallback(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    // scrollHeight is 0 where there's no layout (tests); keep 'auto' then.
-    if (el.scrollHeight > 0) el.style.height = `${el.scrollHeight}px`;
-  }, []);
-
-  // Refit when the text changes...
-  useLayoutEffect(fitHeight, [value, fitHeight]);
-
-  // ...and when the window width changes, since that changes the wrapping.
-  useEffect(() => {
-    window.addEventListener('resize', fitHeight);
-    return () => window.removeEventListener('resize', fitHeight);
-  }, [fitHeight]);
+  useFitHeight(ref, value);
 
   useEffect(() => {
     if (autoFocus) ref.current?.focus();
