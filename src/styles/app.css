@@ -136,3 +136,25 @@ body {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
+
+/* Blocks: plain paragraphs, styled like body text. Each is a textarea that
+   grows to fit, the same technique as the title. */
+.block-input {
+  display: block;
+  width: 100%;
+  margin: 0 0 4px;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.5;
+  resize: none;
+  overflow: hidden;
+}
+
+.block-input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
