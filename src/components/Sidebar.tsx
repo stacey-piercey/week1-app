@@ -1,3 +1,19 @@
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type Announcements,
+  type DragEndEvent,
+  type UniqueIdentifier,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { useEffect, useRef, useState } from 'react';
 import { displayTitle, filterPages } from '../lib/search';
 import type { Page } from '../types';
@@ -13,7 +29,13 @@ interface SidebarProps {
   onSelect: (id: string) => void;
   /** Delete a page. `nextId` is the page to open if the deleted one was open. */
   onDelete: (id: string, nextId: string | null) => void | Promise<void>;
+  /** Move page `activeId` to where page `overId` is. */
+  onReorder?: (activeId: string, overId: string) => unknown;
 }
+
+const dragInstructions =
+  'To reorder, press Space to pick up the page. Use the Up and Down arrow keys to move it, ' +
+  'then Space to drop it, or Escape to cancel.';
 
 /** Where focus goes once the list has re-rendered. */
 type FocusTarget =
@@ -35,6 +57,7 @@ export default function Sidebar({
   onAdd,
   onSelect,
   onDelete,
+  onReorder,
 }: SidebarProps) {
   const sidebarRef = useRef<HTMLElement>(null);
   const newPageRef = useRef<HTMLButtonElement>(null);
@@ -45,6 +68,36 @@ export default function Sidebar({
 
   const visible = filterPages(pages, query);
   const noMatches = pages.length > 0 && visible.length === 0;
+  // Reordering a filtered list would be confusing, so it's off while searching.
+  const sortable = query.trim() === '';
+
+  // The pointer must move 4 px before a drag starts, so a click isn't a drag.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  // Screen-reader messages that use page names instead of internal ids.
+  const nameOf = (id: UniqueIdentifier) => displayTitle(pages.find((p) => p.id === id)?.title ?? '');
+  const positionOf = (id: UniqueIdentifier) => pages.findIndex((p) => p.id === id) + 1;
+  const announcements: Announcements = {
+    onDragStart: ({ active }) =>
+      `Picked up ${nameOf(active.id)}. Position ${positionOf(active.id)} of ${pages.length}.`,
+    onDragOver: ({ active, over }) =>
+      over
+        ? `${nameOf(active.id)} moved to position ${positionOf(over.id)} of ${pages.length}.`
+        : `${nameOf(active.id)} is no longer over the list.`,
+    onDragEnd: ({ active, over }) =>
+      over
+        ? `${nameOf(active.id)} dropped at position ${positionOf(over.id)} of ${pages.length}.`
+        : `${nameOf(active.id)} dropped. Its position didn't change.`,
+    onDragCancel: ({ active }) =>
+      `Reorder cancelled. ${nameOf(active.id)} is back at position ${positionOf(active.id)}.`,
+  };
+
+  const handleDragEnd = ({ active, over }: DragEndEvent) => {
+    if (over && active.id !== over.id) onReorder?.(String(active.id), String(over.id));
+  };
 
   // Move focus after the render that follows a delete or a cancel.
   useEffect(() => {
@@ -96,18 +149,28 @@ export default function Sidebar({
         {loading ? null : pages.length === 0 ? (
           <p className="sidebar-empty">No pages yet</p>
         ) : noMatches ? null : (
-          <ul className="page-list">
-            {visible.map((page) => (
-              <li key={page.id}>
-                <PageListItem
-                  page={page}
-                  selected={page.id === selectedId}
-                  onSelect={onSelect}
-                  onDelete={setPendingDelete}
-                />
-              </li>
-            ))}
-          </ul>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+            accessibility={{ announcements, screenReaderInstructions: { draggable: dragInstructions } }}
+          >
+            <SortableContext items={visible.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+              <ul className="page-list">
+                {visible.map((page) => (
+                  <li key={page.id}>
+                    <PageListItem
+                      page={page}
+                      selected={page.id === selectedId}
+                      sortable={sortable}
+                      onSelect={onSelect}
+                      onDelete={setPendingDelete}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
         )}
       </nav>
       {pendingDelete && (

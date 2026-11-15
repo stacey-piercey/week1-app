@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { SELECTED_PAGE_KEY } from './hooks/usePages';
-import { closeDb, createPage, getPage, updatePage } from './lib/storage';
+import { closeDb, createPage, getPage, listPages, updatePage } from './lib/storage';
+import { stackRows } from './test/stackRows';
 
 /** Create two titled pages in storage, as if from a previous session. */
 async function seedTwoPages() {
@@ -15,6 +16,13 @@ async function seedTwoPages() {
 }
 
 const titleField = () => screen.getByRole('textbox', { name: 'Page title' });
+// The autosave indicator. Not getByRole('status'): dnd-kit adds its own
+// status region for drag announcements.
+const saveStatus = () => {
+  const el = document.querySelector<HTMLElement>('.save-status');
+  if (!el) throw new Error('No save status on screen');
+  return el;
+};
 const blockFields = () => screen.getAllByRole('textbox', { name: 'Paragraph' }) as HTMLTextAreaElement[];
 
 describe('App', () => {
@@ -162,13 +170,13 @@ describe('App', () => {
 
       await user.clear(titleField());
       await user.type(titleField(), 'Groceries');
-      expect(screen.getByRole('status')).toHaveTextContent('Saving…');
+      expect(saveStatus()).toHaveTextContent('Saving…');
       // Three paragraphs, then an edit in the middle one.
       await user.type(blockFields()[0], 'Milk{Enter}Eggs{Enter}Bread');
       await user.type(blockFields()[1], ' (6)');
 
       // The real 500 ms delay passes, then the save finishes.
-      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 2000 });
+      await waitFor(() => expect(saveStatus()).toHaveTextContent('Saved'), { timeout: 2000 });
 
       // Simulated reload: unmount, close the database, render a fresh app.
       first.unmount();
@@ -195,7 +203,7 @@ describe('App', () => {
           '> Quote{Enter}```x = 1{Control>}{Enter}{/Control}---End',
       );
       await user.click(screen.getByRole('checkbox', { name: 'Done' }));
-      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 2000 });
+      await waitFor(() => expect(saveStatus()).toHaveTextContent('Saved'), { timeout: 2000 });
 
       // Simulated reload: unmount, close the database, render a fresh app.
       first.unmount();
@@ -235,7 +243,7 @@ describe('App', () => {
         timeout: 300,
       });
       // Alpha's save finished after the switch, but Beta doesn't show "Saved".
-      expect(screen.getByRole('status')).toBeEmptyDOMElement();
+      expect(saveStatus()).toBeEmptyDOMElement();
     });
 
     it('opening another page clears "Saved"', async () => {
@@ -245,10 +253,10 @@ describe('App', () => {
       await screen.findByRole('button', { name: 'Alpha' });
 
       await user.type(titleField(), ' edited');
-      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 2000 });
+      await waitFor(() => expect(saveStatus()).toHaveTextContent('Saved'), { timeout: 2000 });
 
       await user.click(screen.getByRole('button', { name: 'Beta' }));
-      expect(screen.getByRole('status')).toBeEmptyDOMElement();
+      expect(saveStatus()).toBeEmptyDOMElement();
     });
   });
 
@@ -355,6 +363,52 @@ describe('App', () => {
       expect(screen.queryByText("Couldn't save")).not.toBeInTheDocument();
       expect(errors).not.toHaveBeenCalled();
       expect(await getPage(alpha.id)).toBeUndefined();
+    });
+  });
+
+  describe('reorder', () => {
+    const pageNames = () =>
+      screen
+        .getAllByRole('button', { name: /^(?!Delete|Reorder|New page)/ })
+        .map((b) => b.textContent);
+
+    it('a keyboard move is still there after a reload', async () => {
+      stackRows();
+      const user = userEvent.setup();
+      await seedTwoPages();
+      const first = render(<App />);
+      await screen.findByRole('button', { name: 'Alpha' });
+
+      screen.getByRole('button', { name: 'Reorder "Alpha"' }).focus();
+      await user.keyboard('[Space][ArrowDown][Space]');
+
+      await waitFor(() => expect(pageNames()).toEqual(['Beta', 'Alpha']));
+      await waitFor(async () =>
+        expect((await listPages()).map((p) => p.title)).toEqual(['Beta', 'Alpha']),
+      );
+
+      // Simulated reload: unmount, close the database, render a fresh app.
+      first.unmount();
+      await closeDb();
+      render(<App />);
+
+      await screen.findByRole('button', { name: 'Alpha' });
+      expect(pageNames()).toEqual(['Beta', 'Alpha']);
+    });
+
+    it('a new page made after a reorder goes to the bottom', async () => {
+      stackRows();
+      const user = userEvent.setup();
+      await seedTwoPages();
+      render(<App />);
+      await screen.findByRole('button', { name: 'Alpha' });
+
+      screen.getByRole('button', { name: 'Reorder "Beta"' }).focus();
+      await user.keyboard('[Space][ArrowUp][Space]');
+      await waitFor(() => expect(pageNames()).toEqual(['Beta', 'Alpha']));
+      await user.click(screen.getByRole('button', { name: 'New page' }));
+
+      await waitFor(() => expect(pageNames()).toEqual(['Beta', 'Alpha', 'Untitled']));
     });
   });
 });

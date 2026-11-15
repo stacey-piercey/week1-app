@@ -107,7 +107,58 @@ body {
 }
 
 .page-row .page-item {
+  padding-left: 26px; /* room for the drag grip */
   padding-right: 32px;
+}
+
+/* Drag grip, at the left end of the row. Shown like the trash button. */
+.page-grip {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: grab;
+  touch-action: none; /* let a touch drag move the row, not scroll the page */
+  transform: translateY(-50%);
+  opacity: 0; /* still focusable; shown on hover, focus and the open page */
+}
+
+.page-row:hover .page-grip,
+.page-grip:focus-visible,
+.page-row:has(.page-item[aria-current='page']) .page-grip,
+.page-row.dragging .page-grip {
+  opacity: 1;
+}
+
+.page-grip:hover {
+  background: var(--color-selected);
+  color: var(--color-text);
+}
+
+.page-grip:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+/* The row being dragged lifts above the others. */
+.page-row.dragging {
+  z-index: 2;
+  border-radius: 4px;
+  background: var(--color-sidebar-bg);
+  box-shadow: var(--shadow-popover);
+}
+
+.page-row.dragging .page-grip {
+  cursor: grabbing;
 }
 
 .page-delete {

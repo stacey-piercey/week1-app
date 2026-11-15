@@ -8,8 +8,17 @@ import { usePages } from './hooks/usePages';
 import type { Block } from './types';
 
 export default function App() {
-  const { pages, selectedId, loading, addPage, selectPage, renamePage, setBlocks, removePage } =
-    usePages();
+  const {
+    pages,
+    selectedId,
+    loading,
+    addPage,
+    selectPage,
+    renamePage,
+    setBlocks,
+    removePage,
+    reorderPage,
+  } = usePages();
   const selected = pages.find((p) => p.id === selectedId);
   const autosave = useAutosave();
   const { flush, schedule, clearStatus, discard } = autosave;
@@ -81,6 +90,7 @@ export default function App() {
         onAdd={handleAdd}
         onSelect={handleSelect}
         onDelete={handleDelete}
+        onReorder={reorderPage}
       />
       <main className="content">
         <div className="content-inner">
