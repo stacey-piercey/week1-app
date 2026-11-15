@@ -96,6 +96,16 @@ body {
   margin: 0 auto;
 }
 
+/* Autosave status: small muted text above the title. min-height keeps the
+   title from jumping when the text appears. */
+.save-status {
+  min-height: 1.5em;
+  margin: 0 0 4px;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  text-align: right;
+}
+
 /* Editable page title: looks like a heading, grows to fit wrapped text */
 .page-title {
   margin: 0 0 16px;
