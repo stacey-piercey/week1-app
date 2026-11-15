@@ -8,10 +8,11 @@ import { usePages } from './hooks/usePages';
 import type { Block } from './types';
 
 export default function App() {
-  const { pages, selectedId, loading, addPage, selectPage, renamePage, setBlocks } = usePages();
+  const { pages, selectedId, loading, addPage, selectPage, renamePage, setBlocks, removePage } =
+    usePages();
   const selected = pages.find((p) => p.id === selectedId);
   const autosave = useAutosave();
-  const { flush, schedule, clearStatus } = autosave;
+  const { flush, schedule, clearStatus, discard } = autosave;
 
   // The page just made with "+ New page". Only its title gets autofocus,
   // so opening an existing page leaves focus where it was.
@@ -33,6 +34,23 @@ export default function App() {
       selectPage(id);
     },
     [selectPage, flush, clearStatus],
+  );
+
+  // Drop the page's unsaved edits and wait for any save already running,
+  // so autosave never tries to save a page that's gone.
+  const handleDelete = useCallback(
+    async (id: string, nextId: string | null) => {
+      const wasOpen = id === selectedId;
+      discard(id);
+      await flush();
+      const deleted = await removePage(id, nextId);
+      discard(id); // anything typed while the delete ran
+      if (deleted && wasOpen) {
+        clearStatus();
+        setNewPageId(null);
+      }
+    },
+    [selectedId, discard, flush, removePage, clearStatus],
   );
 
   const handleTitleChange = useCallback(
@@ -62,6 +80,7 @@ export default function App() {
         loading={loading}
         onAdd={handleAdd}
         onSelect={handleSelect}
+        onDelete={handleDelete}
       />
       <main className="content">
         <div className="content-inner">

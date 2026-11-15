@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { SELECTED_PAGE_KEY } from './hooks/usePages';
 import { closeDb, createPage, getPage, updatePage } from './lib/storage';
@@ -249,6 +249,112 @@ describe('App', () => {
 
       await user.click(screen.getByRole('button', { name: 'Beta' }));
       expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    });
+  });
+
+  describe('delete page', () => {
+    /** Click a page's trash button, then Delete in the dialog. */
+    async function deletePageNamed(user: ReturnType<typeof userEvent.setup>, name: string) {
+      await user.click(screen.getByRole('button', { name: `Delete "${name}"` }));
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+    }
+
+    async function seedThreePages() {
+      const { alpha, beta } = await seedTwoPages();
+      const gamma = await createPage();
+      await updatePage(gamma.id, { title: 'Gamma' });
+      return { alpha, beta, gamma };
+    }
+
+    it('deleting the open page opens the one below and focuses it', async () => {
+      const user = userEvent.setup();
+      await seedThreePages();
+      render(<App />);
+      await user.click(await screen.findByRole('button', { name: 'Beta' }));
+
+      await deletePageNamed(user, 'Beta');
+
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Beta' })).not.toBeInTheDocument());
+      const gamma = screen.getByRole('button', { name: 'Gamma' });
+      expect(gamma).toHaveAttribute('aria-current', 'page');
+      expect(gamma).toHaveFocus();
+      expect(titleField()).toHaveValue('Gamma');
+    });
+
+    it('deleting the open last page opens the one above', async () => {
+      const user = userEvent.setup();
+      await seedThreePages();
+      render(<App />);
+      await user.click(await screen.findByRole('button', { name: 'Gamma' }));
+
+      await deletePageNamed(user, 'Gamma');
+
+      await waitFor(() => expect(titleField()).toHaveValue('Beta'));
+      expect(screen.getByRole('button', { name: 'Beta' })).toHaveAttribute('aria-current', 'page');
+    });
+
+    it('deleting a page that is not open leaves the open page alone', async () => {
+      const user = userEvent.setup();
+      await seedThreePages();
+      render(<App />);
+      await screen.findByRole('button', { name: 'Alpha' }); // Alpha is open
+
+      await deletePageNamed(user, 'Gamma');
+
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'Gamma' })).not.toBeInTheDocument());
+      expect(screen.getByRole('button', { name: 'Alpha' })).toHaveAttribute('aria-current', 'page');
+      expect(titleField()).toHaveValue('Alpha');
+    });
+
+    it('deleting the only page shows the empty state, with focus on New page', async () => {
+      const user = userEvent.setup();
+      const page = await createPage();
+      await updatePage(page.id, { title: 'Only' });
+      render(<App />);
+      await screen.findByRole('button', { name: 'Only' });
+
+      await deletePageNamed(user, 'Only');
+
+      expect(await screen.findByText('No pages yet')).toBeInTheDocument();
+      expect(screen.getByText('Create a page to get started.')).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByRole('button', { name: 'New page' })).toHaveFocus());
+    });
+
+    it('a deleted page is still gone after a reload, and the next page is remembered', async () => {
+      const user = userEvent.setup();
+      const { beta } = await seedThreePages();
+      const first = render(<App />);
+      await user.click(await screen.findByRole('button', { name: 'Beta' }));
+
+      await deletePageNamed(user, 'Beta');
+      await waitFor(() => expect(titleField()).toHaveValue('Gamma'));
+      expect(await getPage(beta.id)).toBeUndefined();
+
+      // Simulated reload: unmount, close the database, render a fresh app.
+      first.unmount();
+      await closeDb();
+      render(<App />);
+
+      expect(await screen.findByRole('button', { name: 'Gamma' })).toHaveAttribute('aria-current', 'page');
+      expect(screen.queryByRole('button', { name: 'Beta' })).not.toBeInTheDocument();
+    });
+
+    it('deleting right after typing never shows "Couldn\'t save"', async () => {
+      const user = userEvent.setup();
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { alpha } = await seedTwoPages();
+      render(<App />);
+      await screen.findByRole('button', { name: 'Alpha' });
+
+      await user.type(titleField(), ' edited'); // not saved yet: 500 ms hasn't passed
+      await deletePageNamed(user, 'Alpha edited');
+      await waitFor(() => expect(titleField()).toHaveValue('Beta'));
+
+      // Wait past the autosave delay: nothing tries to save the deleted page.
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      expect(screen.queryByText("Couldn't save")).not.toBeInTheDocument();
+      expect(errors).not.toHaveBeenCalled();
+      expect(await getPage(alpha.id)).toBeUndefined();
     });
   });
 });

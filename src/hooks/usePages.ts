@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { createPage, listPages } from '../lib/storage';
+import { createPage, deletePage, listPages } from '../lib/storage';
 import type { Block, Page } from '../types';
 
 export const SELECTED_PAGE_KEY = 'notes.selectedPageId';
@@ -17,6 +17,14 @@ function readSelectedId(): string | null {
 function saveSelectedId(id: string): void {
   try {
     localStorage.setItem(SELECTED_PAGE_KEY, id);
+  } catch {
+    // ignore
+  }
+}
+
+function clearSelectedId(): void {
+  try {
+    localStorage.removeItem(SELECTED_PAGE_KEY);
   } catch {
     // ignore
   }
@@ -71,5 +79,26 @@ export function usePages() {
     setPages((prev) => prev.map((p) => (p.id === id ? { ...p, blocks } : p)));
   }, []);
 
-  return { pages, selectedId, loading, addPage, selectPage, renamePage, setBlocks };
+  /**
+   * Deletes a page from storage, then from the list. If it was open, opens
+   * `nextId` instead (null = nothing open). Returns false if the delete
+   * failed; the page then stays.
+   */
+  const removePage = useCallback(async (id: string, nextId: string | null) => {
+    try {
+      await deletePage(id);
+    } catch (error) {
+      console.error('Could not delete page', error);
+      return false;
+    }
+    setPages((prev) => prev.filter((p) => p.id !== id));
+    setSelectedId((current) => (current === id ? nextId : current));
+    if (readSelectedId() === id) {
+      if (nextId) saveSelectedId(nextId);
+      else clearSelectedId();
+    }
+    return true;
+  }, []);
+
+  return { pages, selectedId, loading, addPage, selectPage, renamePage, setBlocks, removePage };
 }

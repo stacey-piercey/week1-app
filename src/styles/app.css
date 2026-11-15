@@ -60,8 +60,10 @@ body {
   color: var(--color-muted);
 }
 
+/* The row, not the name button, carries hover, so the highlight stays
+   while the pointer is over the trash button. */
 .new-page:hover,
-.page-item:hover {
+.page-row:hover .page-item {
   background: var(--color-hover);
 }
 
@@ -74,6 +76,116 @@ body {
 .page-item:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: -2px;
+}
+
+/* Sidebar row: the trash button sits over the right end of the name,
+   which leaves room for it so long titles still end in "…". */
+.page-row {
+  position: relative;
+}
+
+.page-row .page-item {
+  padding-right: 32px;
+}
+
+.page-delete {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transform: translateY(-50%);
+  opacity: 0; /* still focusable; shown on hover, focus and the open page */
+}
+
+.page-row:hover .page-delete,
+.page-delete:focus-visible,
+.page-item[aria-current='page'] + .page-delete {
+  opacity: 1;
+}
+
+.page-delete:hover {
+  background: var(--color-selected);
+  color: var(--color-danger);
+}
+
+.page-delete:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+/* Confirm dialog (native <dialog>) */
+.confirm-dialog {
+  width: min(400px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  box-shadow: var(--shadow-popover);
+}
+
+.confirm-dialog::backdrop {
+  background: var(--color-backdrop);
+}
+
+.confirm-dialog-body {
+  padding: 20px;
+}
+
+.confirm-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  overflow-wrap: anywhere;
+}
+
+.confirm-dialog p {
+  margin: 0 0 20px;
+  color: var(--color-muted);
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.button {
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--color-hover);
+}
+
+.button-danger {
+  border-color: var(--color-danger);
+  background: var(--color-danger);
+  color: var(--color-on-danger);
+}
+
+.button-danger:hover {
+  border-color: var(--color-danger-hover);
+  background: var(--color-danger-hover);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 
 .page-item.untitled,

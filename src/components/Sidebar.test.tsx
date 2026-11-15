@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ComponentProps } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { Page } from '../types';
 import Sidebar from './Sidebar';
@@ -8,37 +9,105 @@ function makePage(id: string, title: string, order: number): Page {
   return { id, title, order, createdAt: 0, updatedAt: 0, blocks: [] };
 }
 
+function renderSidebar(props: Partial<ComponentProps<typeof Sidebar>> = {}) {
+  const all = {
+    pages: [],
+    selectedId: null,
+    onAdd: vi.fn(),
+    onSelect: vi.fn(),
+    onDelete: vi.fn(),
+    ...props,
+  };
+  render(<Sidebar {...all} />);
+  return all;
+}
+
+const threePages = [makePage('a', 'Alpha', 0), makePage('b', 'Beta', 1), makePage('c', 'Gamma', 2)];
+
 describe('Sidebar', () => {
   it('shows an empty state with a New page prompt when there are no pages', () => {
-    render(<Sidebar pages={[]} selectedId={null} onAdd={vi.fn()} onSelect={vi.fn()} />);
+    renderSidebar();
     expect(screen.getByText('No pages yet')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'New page' })).toBeInTheDocument();
   });
 
   it('shows "Untitled" for a page with an empty title', () => {
-    render(
-      <Sidebar pages={[makePage('a', '', 0)]} selectedId={null} onAdd={vi.fn()} onSelect={vi.fn()} />,
-    );
+    renderSidebar({ pages: [makePage('a', '', 0)] });
     expect(screen.getByRole('button', { name: 'Untitled' })).toBeInTheDocument();
   });
 
   it('marks only the selected page with aria-current', () => {
-    const pages = [makePage('a', 'Alpha', 0), makePage('b', 'Beta', 1)];
-    render(<Sidebar pages={pages} selectedId="b" onAdd={vi.fn()} onSelect={vi.fn()} />);
+    renderSidebar({ pages: [makePage('a', 'Alpha', 0), makePage('b', 'Beta', 1)], selectedId: 'b' });
     expect(screen.getByRole('button', { name: 'Beta' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('button', { name: 'Alpha' })).not.toHaveAttribute('aria-current');
   });
 
   it('calls onSelect with the page id and onAdd for New page', async () => {
     const user = userEvent.setup();
-    const onAdd = vi.fn();
-    const onSelect = vi.fn();
-    render(
-      <Sidebar pages={[makePage('a', 'Alpha', 0)]} selectedId={null} onAdd={onAdd} onSelect={onSelect} />,
-    );
+    const { onAdd, onSelect } = renderSidebar({ pages: [makePage('a', 'Alpha', 0)] });
     await user.click(screen.getByRole('button', { name: 'Alpha' }));
     expect(onSelect).toHaveBeenCalledWith('a');
     await user.click(screen.getByRole('button', { name: 'New page' }));
     expect(onAdd).toHaveBeenCalledTimes(1);
+  });
+
+  describe('delete', () => {
+    it('each row has a trash button named after its page', () => {
+      renderSidebar({ pages: [makePage('a', 'Alpha', 0), makePage('b', '', 1)] });
+      expect(screen.getByRole('button', { name: 'Delete "Alpha"' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Delete "Untitled"' })).toBeInTheDocument();
+    });
+
+    it('the dialog names the page and starts on Cancel', async () => {
+      const user = userEvent.setup();
+      renderSidebar({ pages: threePages });
+      await user.click(screen.getByRole('button', { name: 'Delete "Beta"' }));
+
+      const dialog = screen.getByRole('dialog', { name: 'Delete "Beta"?' });
+      expect(dialog).toHaveAccessibleDescription("This can't be undone.");
+      expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+    });
+
+    it.each([
+      ['Cancel', (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: 'Cancel' }))],
+      ['Escape', (user: ReturnType<typeof userEvent.setup>) => user.keyboard('{Escape}')],
+      ['a backdrop click', (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('dialog'))],
+    ])('%s keeps the page and returns focus to the trash button', async (_name, cancel) => {
+      const user = userEvent.setup();
+      const { onDelete } = renderSidebar({ pages: threePages });
+      const trash = screen.getByRole('button', { name: 'Delete "Beta"' });
+      await user.click(trash);
+
+      await cancel(user);
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(onDelete).not.toHaveBeenCalled();
+      expect(trash).toHaveFocus();
+    });
+
+    it('Delete passes the page below as the next page', async () => {
+      const user = userEvent.setup();
+      const { onDelete } = renderSidebar({ pages: threePages });
+      await user.click(screen.getByRole('button', { name: 'Delete "Beta"' }));
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+      expect(onDelete).toHaveBeenCalledWith('b', 'c');
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    it('deleting the last page passes the page above', async () => {
+      const user = userEvent.setup();
+      const { onDelete } = renderSidebar({ pages: threePages });
+      await user.click(screen.getByRole('button', { name: 'Delete "Gamma"' }));
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+      expect(onDelete).toHaveBeenCalledWith('c', 'b');
+    });
+
+    it('deleting the only page passes null', async () => {
+      const user = userEvent.setup();
+      const { onDelete } = renderSidebar({ pages: [makePage('a', 'Alpha', 0)] });
+      await user.click(screen.getByRole('button', { name: 'Delete "Alpha"' }));
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+      expect(onDelete).toHaveBeenCalledWith('a', null);
+    });
   });
 });
