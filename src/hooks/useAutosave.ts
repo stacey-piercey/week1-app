@@ -68,6 +68,18 @@ export function useAutosave(save: SaveFn = updatePage) {
     setStatus('idle');
   }, []);
 
+  /**
+   * Drop a page's unsaved edit (e.g. the page is being deleted), so it's
+   * never saved. A save already running carries on: wait for `flush()`.
+   */
+  const discard = useCallback((pageId: string) => {
+    pending.current.delete(pageId);
+    if (pending.current.size === 0 && timer.current !== null) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+  }, []);
+
   const schedule = useCallback(
     (pageId: string, changes: PageChanges) => {
       pending.current.set(pageId, { ...pending.current.get(pageId), ...changes });
@@ -99,5 +111,5 @@ export function useAutosave(save: SaveFn = updatePage) {
     };
   }, [flush]);
 
-  return { status, schedule, flush, clearStatus };
+  return { status, schedule, flush, clearStatus, discard };
 }

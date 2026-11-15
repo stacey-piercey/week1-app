@@ -240,4 +240,28 @@ describe('useAutosave', () => {
     expect(save).toHaveBeenCalledWith('page-1', { title: 'One' });
     expect(save).toHaveBeenCalledWith('page-2', { title: 'Two' });
   });
+
+  describe('discard', () => {
+    it('drops a pending edit, so nothing saves after 500 ms or on pagehide', async () => {
+      const { result, save, type } = setup();
+      type('Hello');
+      act(() => result.current.discard('page-1'));
+
+      await wait(500);
+      await act(async () => window.dispatchEvent(new Event('pagehide')));
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    it("keeps other pages' edits", async () => {
+      const { result, save } = setup();
+      act(() => {
+        result.current.schedule('page-1', { title: 'One' });
+        result.current.schedule('page-2', { title: 'Two' });
+        result.current.discard('page-1');
+      });
+      await wait(500);
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(save).toHaveBeenCalledWith('page-2', { title: 'Two' });
+    });
+  });
 });
