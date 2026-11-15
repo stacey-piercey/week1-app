@@ -1,5 +1,4 @@
-import { IDBFactory } from 'fake-indexeddb';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   closeDb,
   createPage,
@@ -9,16 +8,6 @@ import {
   reorderPages,
   updatePage,
 } from './storage';
-
-beforeEach(() => {
-  // A brand-new, empty fake database for every test.
-  globalThis.indexedDB = new IDBFactory();
-});
-
-afterEach(async () => {
-  await closeDb();
-  vi.restoreAllMocks();
-});
 
 describe('storage', () => {
   it('createPage returns a page with an id and one empty paragraph', async () => {
