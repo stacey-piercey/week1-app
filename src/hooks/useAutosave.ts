@@ -22,6 +22,9 @@ export function useAutosave(save: SaveFn = updatePage) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The save queue: each batch waits for the one before it.
   const queue = useRef<Promise<void>>(Promise.resolve());
+  // Bumped by clearStatus(). A save started before a clear doesn't show
+  // "Saved" afterwards (e.g. page A's save finishing after you open page B).
+  const statusGeneration = useRef(0);
 
   const saveRef = useRef(save);
   saveRef.current = save;
@@ -36,6 +39,7 @@ export function useAutosave(save: SaveFn = updatePage) {
     const batch = [...pending.current];
     pending.current.clear();
     setStatus('saving');
+    const generation = statusGeneration.current;
 
     queue.current = queue.current.then(async () => {
       let failed = false;
@@ -49,10 +53,19 @@ export function useAutosave(save: SaveFn = updatePage) {
           pending.current.set(pageId, { ...changes, ...pending.current.get(pageId) });
         }
       }
+      // A failure always shows, even after a clear, so it's never hidden.
       if (failed) setStatus('error');
-      else if (pending.current.size === 0) setStatus('saved');
+      else if (pending.current.size === 0 && generation === statusGeneration.current) {
+        setStatus('saved');
+      }
     });
     return queue.current;
+  }, []);
+
+  /** Hide the status (e.g. when another page opens). Saving carries on. */
+  const clearStatus = useCallback(() => {
+    statusGeneration.current += 1;
+    setStatus('idle');
   }, []);
 
   const schedule = useCallback(
@@ -86,5 +99,5 @@ export function useAutosave(save: SaveFn = updatePage) {
     };
   }, [flush]);
 
-  return { status, schedule, flush };
+  return { status, schedule, flush, clearStatus };
 }

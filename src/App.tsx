@@ -9,25 +9,28 @@ export default function App() {
   const { pages, selectedId, loading, addPage, selectPage, renamePage } = usePages();
   const selected = pages.find((p) => p.id === selectedId);
   const autosave = useAutosave();
-  const { flush, schedule } = autosave;
+  const { flush, schedule, clearStatus } = autosave;
 
   // The page just made with "+ New page". Only its title gets autofocus,
   // so opening an existing page leaves focus where it was.
   const [newPageId, setNewPageId] = useState<string | null>(null);
 
-  // Leaving a page saves its unsaved edits straight away.
+  // Leaving a page saves its unsaved edits straight away, and clears the
+  // status so the next page doesn't show "Saved" for the old page's edits.
   const handleAdd = useCallback(async () => {
     void flush();
+    clearStatus();
     setNewPageId(await addPage());
-  }, [addPage, flush]);
+  }, [addPage, flush, clearStatus]);
 
   const handleSelect = useCallback(
     (id: string) => {
       void flush();
+      clearStatus();
       setNewPageId(null);
       selectPage(id);
     },
-    [selectPage, flush],
+    [selectPage, flush, clearStatus],
   );
 
   const handleTitleChange = useCallback(

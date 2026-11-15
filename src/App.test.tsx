@@ -173,6 +173,21 @@ describe('App', () => {
       await waitFor(async () => expect((await getPage(alpha.id))?.title).toBe('Alpha edited'), {
         timeout: 300,
       });
+      // Alpha's save finished after the switch, but Beta doesn't show "Saved".
+      expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    });
+
+    it('opening another page clears "Saved"', async () => {
+      const user = userEvent.setup();
+      await seedTwoPages();
+      render(<App />);
+      await screen.findByRole('button', { name: 'Alpha' });
+
+      await user.type(titleField(), ' edited');
+      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 2000 });
+
+      await user.click(screen.getByRole('button', { name: 'Beta' }));
+      expect(screen.getByRole('status')).toBeEmptyDOMElement();
     });
   });
 });

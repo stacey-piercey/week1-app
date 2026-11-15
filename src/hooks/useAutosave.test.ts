@@ -173,6 +173,63 @@ describe('useAutosave', () => {
     expect(result.current.status).toBe('saved');
   });
 
+  describe('clearStatus', () => {
+    it('hides "Saved"', async () => {
+      const { result, type } = setup();
+      type('Hello');
+      await wait(500);
+      expect(result.current.status).toBe('saved');
+
+      act(() => result.current.clearStatus());
+      expect(result.current.status).toBe('idle');
+    });
+
+    it('a save still running when cleared does not show "Saved" later', async () => {
+      let finish!: () => void;
+      const save = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)));
+      const { result, type } = setup(save);
+      type('Hello');
+
+      // Like switching pages: save at once, then clear.
+      await act(async () => {
+        void result.current.flush();
+        result.current.clearStatus();
+      });
+      await act(async () => finish());
+
+      expect(save).toHaveBeenCalledWith('page-1', { title: 'Hello' });
+      expect(result.current.status).toBe('idle');
+    });
+
+    it('a save that fails after a clear still shows "Couldn\'t save"', async () => {
+      let fail!: (e: Error) => void;
+      const save = vi.fn(() => new Promise<void>((_resolve, reject) => (fail = reject)));
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const { result, type } = setup(save);
+      type('Hello');
+
+      await act(async () => {
+        void result.current.flush();
+        result.current.clearStatus();
+      });
+      await act(async () => fail(new Error('disk full')));
+
+      expect(result.current.status).toBe('error');
+    });
+
+    it('the next edit after a clear shows Saving then Saved as usual', async () => {
+      const { result, type } = setup();
+      type('Hello');
+      await wait(500);
+      act(() => result.current.clearStatus());
+
+      type('Hello again');
+      expect(result.current.status).toBe('saving');
+      await wait(500);
+      expect(result.current.status).toBe('saved');
+    });
+  });
+
   it('saves edits to two pages separately', async () => {
     const { result, save } = setup();
     act(() => {
