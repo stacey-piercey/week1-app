@@ -83,6 +83,7 @@ src/
   - **Waits 500 ms:** type, advance 499 ms, and no save has happened; advance 1 ms more, and exactly one save happens.
   - **Typing resets the timer:** type, wait 300 ms, type again, wait 300 ms, and still no save; wait 200 ms more, and one save contains the latest text.
   - **Reload shows saved content:** render the app, type a title and some block text, advance 500 ms and let the save finish, unmount and render a fresh app (a simulated reload), and the same title and text appear.
+    - *Done in step 4 for the title only (blocks don't exist yet). Step 5 adds block text to this test. App-level tests use real timers, because Testing Library's `findBy`/`waitFor` hang under Vitest fake timers. The exact 500 ms timing is tested in `useAutosave.test.ts`.*
   - **Close within 500 ms:** type, advance 100 ms, fire `pagehide`, and the save happens immediately with no wait. The same check runs with `visibilitychange` (tab hidden).
   - Status goes Saving… → Saved, and a failed save shows "Couldn't save" and retries on the next edit.
 - Manual: edit a title and reload; type, close the tab at once, reopen it, and check the edit is kept.

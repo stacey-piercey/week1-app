@@ -61,7 +61,7 @@ export function usePages() {
     return page.id;
   }, [selectPage]);
 
-  /** Changes a page's title in memory only. Step 4 (autosave) adds saving. */
+  /** Changes a page's title in memory only. App saves it via useAutosave. */
   const renamePage = useCallback((id: string, title: string) => {
     setPages((prev) => prev.map((p) => (p.id === id ? { ...p, title } : p)));
   }, []);
