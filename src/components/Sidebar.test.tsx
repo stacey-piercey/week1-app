@@ -102,12 +102,75 @@ describe('Sidebar', () => {
       expect(onDelete).toHaveBeenCalledWith('c', 'b');
     });
 
+    it('while searching, the next page comes from the visible list', async () => {
+      const user = userEvent.setup();
+      const pages = [
+        makePage('a', 'Apple', 0),
+        makePage('b', 'Banana', 1),
+        makePage('c', 'Apricot', 2),
+      ];
+      const { onDelete } = renderSidebar({ pages });
+      await user.type(screen.getByRole('searchbox', { name: 'Search pages' }), 'ap');
+      await user.click(screen.getByRole('button', { name: 'Delete "Apple"' }));
+      await user.click(screen.getByRole('button', { name: 'Delete' }));
+      // Banana is next in the full list, but hidden by the search.
+      expect(onDelete).toHaveBeenCalledWith('a', 'c');
+    });
+
     it('deleting the only page passes null', async () => {
       const user = userEvent.setup();
       const { onDelete } = renderSidebar({ pages: [makePage('a', 'Alpha', 0)] });
       await user.click(screen.getByRole('button', { name: 'Delete "Alpha"' }));
       await user.click(screen.getByRole('button', { name: 'Delete' }));
       expect(onDelete).toHaveBeenCalledWith('a', null);
+    });
+  });
+
+  describe('search', () => {
+    const searchBox = () => screen.getByRole('searchbox', { name: 'Search pages' });
+    const pageNames = () =>
+      screen.queryAllByRole('button', { name: /^(?!Delete|New page)/ }).map((b) => b.textContent);
+
+    it('typing filters the list', async () => {
+      const user = userEvent.setup();
+      renderSidebar({ pages: threePages });
+      await user.type(searchBox(), 'MM');
+      expect(pageNames()).toEqual(['Gamma']);
+    });
+
+    it('shows "No pages match" when nothing matches', async () => {
+      const user = userEvent.setup();
+      renderSidebar({ pages: threePages });
+      expect(screen.queryByText('No pages match')).not.toBeInTheDocument();
+      await user.type(searchBox(), 'zzz');
+      expect(screen.getByText('No pages match')).toBeInTheDocument();
+      expect(pageNames()).toEqual([]);
+    });
+
+    it('clearing the search restores the list', async () => {
+      const user = userEvent.setup();
+      renderSidebar({ pages: threePages });
+      await user.type(searchBox(), 'zzz');
+      await user.clear(searchBox());
+      expect(pageNames()).toEqual(['Alpha', 'Beta', 'Gamma']);
+      expect(screen.queryByText('No pages match')).not.toBeInTheDocument();
+    });
+
+    it('Escape clears the search', async () => {
+      const user = userEvent.setup();
+      renderSidebar({ pages: threePages });
+      await user.type(searchBox(), 'alp{Escape}');
+      expect(searchBox()).toHaveValue('');
+      expect(pageNames()).toEqual(['Alpha', 'Beta', 'Gamma']);
+    });
+
+    it('New page clears the search', async () => {
+      const user = userEvent.setup();
+      const { onAdd } = renderSidebar({ pages: threePages });
+      await user.type(searchBox(), 'alp');
+      await user.click(screen.getByRole('button', { name: 'New page' }));
+      expect(onAdd).toHaveBeenCalledTimes(1);
+      expect(searchBox()).toHaveValue('');
     });
   });
 });

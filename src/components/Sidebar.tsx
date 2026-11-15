@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { displayTitle } from '../lib/search';
+import { displayTitle, filterPages } from '../lib/search';
 import type { Page } from '../types';
 import ConfirmDialog from './ConfirmDialog';
 import PageListItem from './PageListItem';
+import SearchBox from './SearchBox';
 
 interface SidebarProps {
   pages: Page[];
@@ -37,8 +38,13 @@ export default function Sidebar({
 }: SidebarProps) {
   const sidebarRef = useRef<HTMLElement>(null);
   const newPageRef = useRef<HTMLButtonElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const [query, setQuery] = useState('');
   const [pendingDelete, setPendingDelete] = useState<Page | null>(null);
   const [focusTarget, setFocusTarget] = useState<FocusTarget | null>(null);
+
+  const visible = filterPages(pages, query);
+  const noMatches = pages.length > 0 && visible.length === 0;
 
   // Move focus after the render that follows a delete or a cancel.
   useEffect(() => {
@@ -52,8 +58,15 @@ export default function Sidebar({
     const el = sidebarRef.current?.querySelector<HTMLElement>(
       `[data-page-id="${focusTarget.id}"] ${selector}`,
     );
-    (el ?? newPageRef.current)?.focus();
+    // The row may be hidden by the search filter: fall back to the search box.
+    (el ?? searchRef.current ?? newPageRef.current)?.focus();
   }, [focusTarget]);
+
+  // A new page is "Untitled", so an active search could hide it.
+  const handleAdd = () => {
+    setQuery('');
+    onAdd();
+  };
 
   const cancelDelete = () => {
     if (pendingDelete) setFocusTarget({ kind: 'trash', id: pendingDelete.id });
@@ -64,7 +77,8 @@ export default function Sidebar({
     const page = pendingDelete;
     if (!page) return;
     setPendingDelete(null);
-    const nextId = neighbourId(pages, page.id);
+    // Prefer a neighbour you can see; else one hidden by the search.
+    const nextId = neighbourId(visible, page.id) ?? neighbourId(pages, page.id);
     await onDelete(page.id, nextId);
     setFocusTarget(nextId ? { kind: 'row', id: nextId } : { kind: 'new' });
   };
@@ -72,15 +86,18 @@ export default function Sidebar({
   return (
     <aside className="sidebar" ref={sidebarRef}>
       <div className="app-name">Notes</div>
-      <button ref={newPageRef} type="button" className="new-page" onClick={() => onAdd()}>
+      <button ref={newPageRef} type="button" className="new-page" onClick={handleAdd}>
         <span aria-hidden="true">+</span> New page
       </button>
+      <SearchBox value={query} onChange={setQuery} inputRef={searchRef} />
+      {/* Always present, so screen readers announce the message when it appears. */}
+      <div aria-live="polite">{noMatches && <p className="sidebar-empty">No pages match</p>}</div>
       <nav aria-label="Pages">
         {loading ? null : pages.length === 0 ? (
           <p className="sidebar-empty">No pages yet</p>
-        ) : (
+        ) : noMatches ? null : (
           <ul className="page-list">
-            {pages.map((page) => (
+            {visible.map((page) => (
               <li key={page.id}>
                 <PageListItem
                   page={page}

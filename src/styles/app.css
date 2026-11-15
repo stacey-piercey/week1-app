@@ -78,6 +78,28 @@ body {
   outline-offset: -2px;
 }
 
+/* Search box, under "+ New page" */
+.search-box {
+  width: 100%;
+  margin: 4px 0;
+  padding: 5px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg);
+  color: inherit;
+  font: inherit;
+}
+
+.search-box::placeholder {
+  color: var(--color-muted);
+}
+
+.search-box:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
 /* Sidebar row: the trash button sits over the right end of the name,
    which leaves room for it so long titles still end in "…". */
 .page-row {
