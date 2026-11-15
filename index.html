@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Notes</title>
+    <script id="theme-boot">
+      // Set the theme before the first paint, so dark mode never flashes white.
+      // Same key and rules as src/hooks/useTheme.ts, which takes over after.
+      (function () {
+        var mode = 'system';
+        try { mode = localStorage.getItem('notes.theme') || 'system'; } catch (e) {}
+        var systemDark = !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var dark = mode === 'dark' || (mode !== 'light' && systemDark);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

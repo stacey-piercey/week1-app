@@ -1,9 +1,38 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import indexHtml from '../../index.html?raw';
 import { setSystemDark } from '../test/matchMedia';
 import { THEME_KEY, useTheme } from './useTheme';
 
 const htmlTheme = () => document.documentElement.dataset.theme;
+
+/** Runs the inline <script id="theme-boot"> from index.html. */
+function runBootScript() {
+  const match = /<script id="theme-boot">([\s\S]*?)<\/script>/.exec(indexHtml);
+  if (!match) throw new Error('No theme-boot script in index.html');
+  new Function(match[1])();
+}
+
+describe('index.html boot script', () => {
+  it.each([
+    [null, false],
+    [null, true],
+    ['system', true],
+    ['light', true],
+    ['dark', false],
+    ['purple', true],
+  ])('saved %s, system dark %s: sets the same theme as the hook', (saved, systemDark) => {
+    if (saved) localStorage.setItem(THEME_KEY, saved);
+    setSystemDark(systemDark);
+
+    runBootScript();
+    const fromScript = htmlTheme();
+    delete document.documentElement.dataset.theme;
+    const { result } = renderHook(() => useTheme());
+
+    expect(fromScript).toBe(result.current.resolved);
+  });
+});
 
 describe('useTheme', () => {
   it('starts on System and follows a light system', () => {

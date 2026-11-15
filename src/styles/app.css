@@ -187,7 +187,7 @@ body {
 
 .page-delete:hover {
   background: var(--color-selected);
-  color: var(--color-danger);
+  color: var(--color-danger-text);
 }
 
 .page-delete:focus-visible {
