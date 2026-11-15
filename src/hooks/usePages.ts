@@ -53,11 +53,18 @@ export function usePages() {
     saveSelectedId(id);
   }, []);
 
+  /** Creates a page, appends it, selects it and returns its id. */
   const addPage = useCallback(async () => {
     const page = await createPage();
     setPages((prev) => [...prev, page]);
     selectPage(page.id);
+    return page.id;
   }, [selectPage]);
 
-  return { pages, selectedId, loading, addPage, selectPage };
+  /** Changes a page's title in memory only. Step 4 (autosave) adds saving. */
+  const renamePage = useCallback((id: string, title: string) => {
+    setPages((prev) => prev.map((p) => (p.id === id ? { ...p, title } : p)));
+  }, []);
+
+  return { pages, selectedId, loading, addPage, selectPage, renamePage };
 }

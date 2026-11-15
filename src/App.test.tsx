@@ -14,6 +14,8 @@ async function seedTwoPages() {
   return { alpha, beta };
 }
 
+const titleField = () => screen.getByRole('textbox', { name: 'Page title' });
+
 describe('App', () => {
   it('renders the app name and the empty state', async () => {
     render(<App />);
@@ -31,7 +33,7 @@ describe('App', () => {
 
     const item = await screen.findByRole('button', { name: 'Untitled' });
     expect(item).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('heading', { level: 1, name: 'Untitled' })).toBeInTheDocument();
+    expect(titleField()).toHaveValue('');
     expect(screen.queryByText('No pages yet')).not.toBeInTheDocument();
   });
 
@@ -43,13 +45,13 @@ describe('App', () => {
     const alpha = await screen.findByRole('button', { name: 'Alpha' });
     const beta = screen.getByRole('button', { name: 'Beta' });
     expect(alpha).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('heading', { level: 1, name: 'Alpha' })).toBeInTheDocument();
+    expect(titleField()).toHaveValue('Alpha');
 
     await user.click(beta);
 
     expect(beta).toHaveAttribute('aria-current', 'page');
     expect(alpha).not.toHaveAttribute('aria-current');
-    expect(screen.getByRole('heading', { level: 1, name: 'Beta' })).toBeInTheDocument();
+    expect(titleField()).toHaveValue('Beta');
   });
 
   it('remembers the selected page across a reload', async () => {
@@ -64,7 +66,7 @@ describe('App', () => {
     render(<App />);
 
     expect(await screen.findByRole('button', { name: 'Beta' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('heading', { level: 1, name: 'Beta' })).toBeInTheDocument();
+    expect(titleField()).toHaveValue('Beta');
   });
 
   it('selects the first page when the saved page no longer exists', async () => {
@@ -78,5 +80,58 @@ describe('App', () => {
     await seedTwoPages();
     render(<App />);
     expect(await screen.findByRole('button', { name: 'Alpha' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  describe('editable title', () => {
+    it('typing updates the page name in the sidebar live', async () => {
+      const user = userEvent.setup();
+      await seedTwoPages();
+      render(<App />);
+      await screen.findByRole('button', { name: 'Alpha' });
+
+      await user.clear(titleField());
+      expect(screen.getByRole('button', { name: 'Untitled' })).toHaveAttribute('aria-current', 'page');
+
+      await user.type(titleField(), 'Shopping');
+      expect(screen.getByRole('button', { name: 'Shopping' })).toHaveAttribute('aria-current', 'page');
+      expect(screen.queryByRole('button', { name: 'Alpha' })).not.toBeInTheDocument();
+    });
+
+    it('keeps an edited title when you switch pages and back', async () => {
+      const user = userEvent.setup();
+      await seedTwoPages();
+      render(<App />);
+      await screen.findByRole('button', { name: 'Alpha' });
+
+      await user.type(titleField(), ' edited');
+      await user.click(screen.getByRole('button', { name: 'Beta' }));
+      expect(titleField()).toHaveValue('Beta');
+
+      await user.click(screen.getByRole('button', { name: 'Alpha edited' }));
+      expect(titleField()).toHaveValue('Alpha edited');
+    });
+
+    it('New page puts the cursor in the new title', async () => {
+      const user = userEvent.setup();
+      render(<App />);
+      await screen.findByText('No pages yet');
+
+      await user.click(screen.getByRole('button', { name: 'New page' }));
+
+      await screen.findByRole('button', { name: 'Untitled' });
+      expect(titleField()).toHaveFocus();
+    });
+
+    it('opening an existing page does not move focus to the title', async () => {
+      const user = userEvent.setup();
+      await seedTwoPages();
+      render(<App />);
+      const beta = await screen.findByRole('button', { name: 'Beta' });
+
+      await user.click(beta);
+
+      expect(titleField()).not.toHaveFocus();
+      expect(beta).toHaveFocus();
+    });
   });
 });

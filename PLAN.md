@@ -70,7 +70,9 @@ src/
 - Manual: create 2 pages and switch between them.
 
 **3. Editable title**
-- Component tests: typing updates the title in the sidebar live; Enter moves focus to the first block; the placeholder shows when empty.
+- A one-row textarea that wraps long titles and grows to fit. Enter is blocked and pasted line breaks become spaces. A newly created page focuses its title.
+- Titles are kept in memory only until step 4 adds autosave.
+- Component tests: typing updates the title in the sidebar live; Enter calls an `onEnter` hook (step 5 connects it to the first block); the placeholder shows when empty.
 
 **4. Autosave** (built before the editor so title and blocks share one save path)
 - **Where it saves:** IndexedDB, in the `pages` store. localStorage is used only for the theme and the last opened page.
@@ -87,7 +89,7 @@ src/
 
 **5. Block editor core** (paragraphs only)
 - Unit (`lib/blocks.ts`): split a block at the cursor; merge with the previous block; delete an empty block.
-- Component tests: Enter creates a new block below and focuses it; Backspace at the start merges up; Up and Down arrows move between blocks; the last block can't be deleted.
+- Component tests: Enter in the page title moves focus to the first block; Enter creates a new block below and focuses it; Backspace at the start merges up; Up and Down arrows move between blocks; the last block can't be deleted.
 - Manual: type 3 paragraphs, edit in the middle of one, reload, and check the text and order.
 
 **6. Block types**
