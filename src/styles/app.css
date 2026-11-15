@@ -95,3 +95,34 @@ body {
   max-width: 720px;
   margin: 0 auto;
 }
+
+/* Editable page title: looks like a heading, grows to fit wrapped text */
+.page-title {
+  margin: 0 0 16px;
+}
+
+.page-title-input {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  resize: none;
+  overflow: hidden;
+}
+
+.page-title-input::placeholder {
+  color: var(--color-muted);
+  opacity: 1;
+}
+
+.page-title-input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
