@@ -128,7 +128,7 @@ src/
 - Colours come only from CSS variables in `theme.css`, so dark mode means swapping the tokens.
 - The toggle cycles through System → Light → Dark, and the choice is saved.
 - **Decided at step 9:**
-  - **Toggle:** one button at the bottom of the sidebar (◐ / ☀ / ☾ *Theme: System / Light / Dark*).
+  - **Toggle:** one button at the bottom of the sidebar (◐ / ☀ / ☾ *Theme: System / Light / Dark*). The sidebar scrolls with the page, so on a long page you scroll down to reach the toggle. Kept as is on purpose; no fixed sidebar.
   - **How it switches:** `useTheme` always sets `<html data-theme="light|dark">` to the theme shown. `theme.css` has a `:root[data-theme='dark']` block that redefines every colour token, plus `color-scheme` so native parts match.
   - **No white flash:** a small inline script in `index.html` sets `data-theme` before the first paint. A test checks it picks the same theme as the hook.
   - **Contrast:** `styles/theme.test.ts` checks WCAG AA in both themes (4.5:1 for text, 3:1 for icons and focus rings). It found two light pairs under 4.5:1, so the light muted grey went from `#6b6b6b` to `#616161`.
