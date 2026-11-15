@@ -42,3 +42,4 @@ Run the tests after every change.
 ## Git
 
 - Day-to-day work happens on the `week1` branch. `main` is the base branch for pull requests.
+- The user runs `git push` themselves after every step. Before saying what is or isn't pushed, run `git fetch` and `git status -sb` to check.
