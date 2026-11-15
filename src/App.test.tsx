@@ -180,6 +180,47 @@ describe('App', () => {
       expect(blockFields().map((f) => f.value)).toEqual(['Milk', 'Eggs (6)', 'Bread']);
     });
 
+    it('every block type and a ticked to-do are still there after a reload', async () => {
+      const user = userEvent.setup();
+      await seedTwoPages();
+      const first = render(<App />);
+      await screen.findByRole('button', { name: 'Alpha' });
+
+      // One of each type, made with markdown shortcuts. An extra Enter ends
+      // each list. "[[" types a single "[" in user-event.
+      await user.type(
+        blockFields()[0],
+        '# Big{Enter}## Mid{Enter}### Small{Enter}' +
+          '- Bullet{Enter}{Enter}1. Number{Enter}{Enter}[[] Task{Enter}{Enter}' +
+          '> Quote{Enter}```x = 1{Control>}{Enter}{/Control}---End',
+      );
+      await user.click(screen.getByRole('checkbox', { name: 'Done' }));
+      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Saved'), { timeout: 2000 });
+
+      // Simulated reload: unmount, close the database, render a fresh app.
+      first.unmount();
+      await closeDb();
+      render(<App />);
+      await screen.findByRole('button', { name: 'Alpha' });
+
+      const blocks = (screen.getAllByRole('textbox') as HTMLTextAreaElement[])
+        .filter((f) => f !== titleField())
+        .map((f) => `${f.getAttribute('aria-label')}: ${f.value}`);
+      expect(blocks).toEqual([
+        'Heading 1: Big',
+        'Heading 2: Mid',
+        'Heading 3: Small',
+        'Bulleted list item: Bullet',
+        'Numbered list item: Number',
+        'To-do: Task',
+        'Quote: Quote',
+        'Code: x = 1',
+        'Paragraph: End',
+      ]);
+      expect(screen.getByRole('checkbox', { name: 'Done' })).toBeChecked();
+      expect(screen.getByRole('separator')).toBeInTheDocument();
+    });
+
     it('switching pages saves the edit at once, without waiting 500 ms', async () => {
       const user = userEvent.setup();
       const { alpha } = await seedTwoPages();

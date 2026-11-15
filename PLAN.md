@@ -95,10 +95,17 @@ src/
 
 **6. Block types**
 - Slash menu: type `/` to see a filtered list, then pick with arrow keys + Enter or a click.
-- Markdown shortcuts: `# ` → H1, `## ` → H2, `- ` → bullet, `1. ` → numbered, `[] ` → to-do, `> ` → quote, `---` → divider, ```` ``` ```` → code.
+- Markdown shortcuts: `# ` → H1, `## ` → H2, `### ` → H3, `- ` → bullet, `1. ` → numbered, `[] ` → to-do, `> ` → quote, `---` → divider, ```` ``` ```` → code. They work in paragraphs only, and only when the cursor is right after the marker (so pasted text doesn't convert).
+- **Decided at step 6:**
+  - **Code block exit:** Ctrl+Enter adds a paragraph below. Plain Enter adds a newline.
+  - **Backspace at the start of a formatted block:** the first press turns it into a paragraph. The second press merges it into the block above.
+  - **Divider:** can't take focus, and Up/Down skip over it. Backspace at the start of the block below removes it. Creating one always leaves an empty paragraph below it.
+  - **Slash menu:** opens on `/` at the start of a block or after a space. Picking a type removes the `/query` text and keeps the rest.
+  - **Enter at the start of a block with text:** adds an empty paragraph above, and the block keeps its type.
 - Unit: shortcut detection for each pattern; changing type keeps the text.
 - Component tests: the slash menu filters as you type, Escape closes it, and it works with the keyboard alone; the to-do checkbox toggles `checked`; Enter in a list continues the list and Enter on an empty list item converts it to a paragraph; numbered lists count up correctly; Enter inside a code block adds a newline instead of a new block; all types survive a simulated reload.
-- Manual: build one of each type and reload.
+- Manual: run the *Manual checks → Block types* list.
+- *Known limits (v1):* dividers can't be removed with the mouse. Lists are separate blocks, not `<ul>`/`<ol>` markup; each block's label tells screen readers its type.
 
 **7. Delete page with confirm**
 - Component tests: the dialog names the page; Cancel and Escape keep the page; Confirm removes it and selects a neighbouring page (or the empty state); focus returns sensibly; the deleted page is still gone after a simulated reload.
@@ -140,6 +147,21 @@ Rerun the same way every time: `npm run dev`, open http://localhost:5173, and st
 9. **Last block:** clear all blocks down to one empty block, then press Backspace. The block stays.
 10. **Reload:** type 3 paragraphs, edit the middle one, wait for "Saved", and reload. The text and order are unchanged.
 11. *(Optional, if you have a Japanese or other IME installed)* While composing with the IME, press Enter to confirm a word. It confirms the word and doesn't split the block.
+
+### Block types (step 6)
+1. **Shortcuts:** in an empty paragraph, type each of `# `, `## `, `### `, `- `, `1. `, `[] `, `> `, ```` ``` ```` and `---` (one per block). Each turns into the right type, the marker disappears, and the cursor stays in the block. Check the styles: heading sizes, bullet, number, checkbox, quote bar, grey code box and divider line.
+2. **Markers line up:** the bullet, number and checkbox sit level with the first line of their text, including when the text wraps.
+3. **Lists:** type 3 numbered items. They read 1, 2, 3. Press Enter on the empty 4th item: it becomes a paragraph. Start a new numbered item below it, and it counts from 1 again.
+4. **To-do:** click the checkbox. The text is struck through and muted. Tab to the checkbox and press Space: it toggles back.
+5. **Code:** Enter adds a new line inside the box, and the box grows. Ctrl+Enter starts a paragraph below. Long lines wrap with no horizontal scrollbar.
+6. **Backspace:** at the start of a heading, the first press turns it into plain text and the second joins it to the block above. Below a divider, Backspace at the start removes the divider.
+7. **Up/Down past a divider:** the cursor jumps over it to the block on the other side.
+8. **Slash menu, keyboard only:** type `/`, then `head`. The list narrows to 3 headings. Use Down, then Enter: the block becomes Heading 2. Type `/` again, press Up, and the highlight wraps to Code. Press Escape: the menu closes and `/` stays as text.
+9. **Slash menu, mouse:** type `/` and click Quote. Focus stays in the block. Clicking elsewhere on the page closes an open menu.
+10. **Slash in text:** typing `and/or` or a URL doesn't open the menu. `Note /` does.
+11. **Long menu:** in a block near the bottom of the window, type `/` and arrow down to Code. The list scrolls so the highlighted item stays visible.
+12. **Screen reader (Narrator, Ctrl+Win+Enter):** with the menu open, Up/Down announce each option's name.
+13. **Reload:** with one block of each type and a ticked to-do, wait for "Saved" and reload. Everything comes back the same.
 
 ## Verification
 - Run `npm test` for all unit and component tests (Vitest) and `npm run dev` to try the app at http://localhost:5173.
