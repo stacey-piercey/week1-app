@@ -1,0 +1,466 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  line-height: 1.5;
+}
+
+/* Two-column layout: fixed sidebar + centred content */
+.app {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 8px;
+  background: var(--color-sidebar-bg);
+  border-right: 1px solid var(--color-border);
+}
+
+.app-name {
+  padding: 4px 8px 8px;
+  font-weight: 600;
+}
+
+.page-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.new-page,
+.page-item,
+.theme-toggle {
+  display: block;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.new-page,
+.theme-toggle {
+  color: var(--color-muted);
+}
+
+/* The row, not the name button, carries hover, so the highlight stays
+   while the pointer is over the trash button. */
+.new-page:hover,
+.theme-toggle:hover,
+.page-row:hover .page-item {
+  background: var(--color-hover);
+}
+
+/* Theme toggle, pinned to the bottom of the sidebar */
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.theme-toggle-icon {
+  display: inline-block;
+  width: 1.25em;
+  text-align: center;
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+.page-item[aria-current='page'] {
+  background: var(--color-selected);
+  font-weight: 600;
+}
+
+.new-page:focus-visible,
+.page-item:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+/* Search box, under "+ New page" */
+.search-box {
+  width: 100%;
+  margin: 4px 0;
+  padding: 5px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg);
+  color: inherit;
+  font: inherit;
+}
+
+.search-box::placeholder {
+  color: var(--color-muted);
+}
+
+.search-box:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+/* Sidebar row: the trash button sits over the right end of the name,
+   which leaves room for it so long titles still end in "…". */
+.page-row {
+  position: relative;
+}
+
+.page-row .page-item {
+  padding-left: 26px; /* room for the drag grip */
+  padding-right: 32px;
+}
+
+/* Drag grip, at the left end of the row. Shown like the trash button. */
+.page-grip {
+  position: absolute;
+  top: 50%;
+  left: 4px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: grab;
+  touch-action: none; /* let a touch drag move the row, not scroll the page */
+  transform: translateY(-50%);
+  opacity: 0; /* still focusable; shown on hover, focus and the open page */
+}
+
+.page-row:hover .page-grip,
+.page-grip:focus-visible,
+.page-row:has(.page-item[aria-current='page']) .page-grip,
+.page-row.dragging .page-grip {
+  opacity: 1;
+}
+
+.page-grip:hover {
+  background: var(--color-selected);
+  color: var(--color-text);
+}
+
+.page-grip:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+/* The row being dragged lifts above the others. */
+.page-row.dragging {
+  z-index: 2;
+  border-radius: 4px;
+  background: var(--color-sidebar-bg);
+  box-shadow: var(--shadow-popover);
+}
+
+.page-row.dragging .page-grip {
+  cursor: grabbing;
+}
+
+.page-delete {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transform: translateY(-50%);
+  opacity: 0; /* still focusable; shown on hover, focus and the open page */
+}
+
+.page-row:hover .page-delete,
+.page-delete:focus-visible,
+.page-item[aria-current='page'] + .page-delete {
+  opacity: 1;
+}
+
+.page-delete:hover {
+  background: var(--color-selected);
+  color: var(--color-danger-text);
+}
+
+.page-delete:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
+}
+
+/* Confirm dialog (native <dialog>) */
+.confirm-dialog {
+  width: min(400px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  box-shadow: var(--shadow-popover);
+}
+
+.confirm-dialog::backdrop {
+  background: var(--color-backdrop);
+}
+
+.confirm-dialog-body {
+  padding: 20px;
+}
+
+.confirm-dialog h2 {
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+  overflow-wrap: anywhere;
+}
+
+.confirm-dialog p {
+  margin: 0 0 20px;
+  color: var(--color-muted);
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.button {
+  padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--color-hover);
+}
+
+.button-danger {
+  border-color: var(--color-danger);
+  background: var(--color-danger);
+  color: var(--color-on-danger);
+}
+
+.button-danger:hover {
+  border-color: var(--color-danger-hover);
+  background: var(--color-danger-hover);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.page-item.untitled,
+.sidebar-empty,
+.empty-hint {
+  color: var(--color-muted);
+}
+
+.sidebar-empty {
+  margin: 0;
+  padding: 6px 8px;
+}
+
+.content {
+  padding: 48px 24px;
+}
+
+.content-inner {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* Autosave status: small muted text above the title. min-height keeps the
+   title from jumping when the text appears. */
+.save-status {
+  min-height: 1.5em;
+  margin: 0 0 4px;
+  color: var(--color-muted);
+  font-size: 0.875rem;
+  text-align: right;
+}
+
+/* Editable page title: looks like a heading, grows to fit wrapped text */
+.page-title {
+  margin: 0 0 16px;
+}
+
+.page-title-input {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  resize: none;
+  overflow: hidden;
+}
+
+.page-title-input::placeholder {
+  color: var(--color-muted);
+  opacity: 1;
+}
+
+.page-title-input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Blocks: plain paragraphs, styled like body text. Each is a textarea that
+   grows to fit, the same technique as the title. */
+.block-input {
+  display: block;
+  width: 100%;
+  margin: 0 0 4px;
+  padding: 2px 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.5;
+  resize: none;
+  overflow: hidden;
+}
+
+.block-input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* One row per block: an optional marker (bullet, number, checkbox) in a
+   24 px gutter, then the text. */
+.block {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+}
+
+/* Same height as the textarea's first line, so the marker lines up with it. */
+.block-marker {
+  flex: 0 0 24px;
+  display: flex;
+  align-items: center;
+  height: calc(1.5em + 4px);
+}
+
+.block-marker input {
+  margin: 0;
+}
+
+.block-h1 .block-input {
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.block-h2 .block-input {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.block-h3 .block-input {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.block-todo.is-checked .block-input {
+  color: var(--color-muted);
+  text-decoration: line-through;
+}
+
+.block-quote .block-input {
+  padding-left: 14px;
+  border-left: 3px solid var(--color-text);
+  border-radius: 0;
+}
+
+.block-code .block-input {
+  padding: 12px 16px;
+  background: var(--color-code-bg);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}
+
+.block-divider {
+  margin: 0 0 4px;
+  padding: 8px 0;
+}
+
+/* Slash menu: a popover under the block's left edge. */
+.slash-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  min-width: 220px;
+  max-height: 300px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-popover);
+}
+
+.slash-option {
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.slash-option:hover {
+  background: var(--color-hover);
+}
+
+.slash-option[aria-selected='true'] {
+  background: var(--color-selected);
+}
+
+.block-divider hr {
+  flex: 1;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+}
