@@ -73,7 +73,7 @@ src/
 - Component tests: typing updates the title in the sidebar live; Enter moves focus to the first block; the placeholder shows when empty.
 
 **4. Autosave** (built before the editor so title and blocks share one save path)
-- **Where it saves:** IndexedDB, in the `pages` store. localStorage is used only for the theme.
+- **Where it saves:** IndexedDB, in the `pages` store. localStorage is used only for the theme and the last opened page.
 - **Normal saving:** 500 ms after typing stops. Each new keystroke restarts the timer.
 - **Immediate save when the page is closing or hidden:** if there's an unsaved edit, it saves straight away on `visibilitychange` (when the tab is hidden), `pagehide` and `beforeunload`. The same happens when you switch to another page in the sidebar.
 - *Known limit (accepted for v1):* the browser could in theory close before that last save finishes. If that ever happens in practice, we can add a localStorage backup later.
