@@ -220,6 +220,38 @@ body {
   padding: 8px 0;
 }
 
+/* Slash menu: a popover under the block's left edge. */
+.slash-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 10;
+  min-width: 220px;
+  max-height: 300px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  box-shadow: var(--shadow-popover);
+}
+
+.slash-option {
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.slash-option:hover {
+  background: var(--color-hover);
+}
+
+.slash-option[aria-selected='true'] {
+  background: var(--color-selected);
+}
+
 .block-divider hr {
   flex: 1;
   margin: 0;

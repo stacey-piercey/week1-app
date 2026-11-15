@@ -1,6 +1,7 @@
 import { useCallback, useImperativeHandle, useLayoutEffect, useRef, type Ref } from 'react';
 import {
   applyShortcut,
+  applySlashChoice,
   backspaceAtStart,
   insertParagraphAfter,
   isTextBlock,
@@ -109,6 +110,7 @@ export default function Editor({ blocks, onChange, ref }: EditorProps) {
           onExitCode={() => applyEdit(insertParagraphAfter(blocks, block.id))}
           onBackspaceAtStart={() => applyEdit(backspaceAtStart(blocks, block.id))}
           onToggleChecked={() => onChange(toggleChecked(blocks, block.id))}
+          onPickType={(type, from, to) => applyEdit(applySlashChoice(blocks, block.id, from, to, type))}
           onLeave={(direction, x) => handleLeave(block.id, direction, x)}
         />
       ))}

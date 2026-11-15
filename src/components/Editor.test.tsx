@@ -281,6 +281,125 @@ describe('Editor', () => {
     });
   });
 
+  describe('slash menu', () => {
+    const optionNames = () => screen.getAllByRole('option').map((o) => o.textContent);
+
+    it('"/" opens a list of every type, and typing filters it', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['']} />);
+
+      await user.type(fields()[0], '/');
+      expect(screen.getByRole('listbox', { name: 'Block types' })).toBeInTheDocument();
+      expect(screen.getAllByRole('option')).toHaveLength(10);
+
+      await user.keyboard('head');
+      expect(optionNames()).toEqual(['Heading 1', 'Heading 2', 'Heading 3']);
+      // The textarea points at the highlighted option for screen readers.
+      expect(fields()[0]).toHaveAttribute('aria-activedescendant', screen.getAllByRole('option')[0].id);
+    });
+
+    it('works with the keyboard alone: arrows move the highlight, Enter picks', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['']} />);
+
+      await user.type(fields()[0], '/hea{ArrowDown}');
+      expect(screen.getByRole('option', { name: 'Heading 2' })).toHaveAttribute('aria-selected', 'true');
+      await user.keyboard('{Enter}Title');
+
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+      expect(allBlocks()).toEqual(['Heading 2: Title']);
+      expect(field('Heading 2')).toHaveFocus();
+    });
+
+    it('Up from the first option wraps to the last', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['']} />);
+
+      await user.type(fields()[0], '/{ArrowUp}');
+
+      expect(screen.getByRole('option', { name: 'Code' })).toHaveAttribute('aria-selected', 'true');
+    });
+
+    it('Escape closes it and keeps the typed text', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['']} />);
+
+      await user.type(fields()[0], '/hea{Escape}');
+
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+      expect(allBlocks()).toEqual(['Paragraph: /hea']);
+      expect(fields()[0]).toHaveFocus();
+    });
+
+    it('clicking an option picks it and keeps the focus in the block', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['']} />);
+
+      await user.type(fields()[0], '/');
+      await user.click(screen.getByRole('option', { name: 'Quote' }));
+
+      expect(allBlocks()).toEqual(['Quote: ']);
+      expect(field('Quote')).toHaveFocus();
+    });
+
+    it('keeps the rest of the text when picking a type', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['Buy milk']} />);
+
+      await user.type(fields()[0], '/todo{Enter}', { initialSelectionStart: 0, initialSelectionEnd: 0 });
+
+      expect(allBlocks()).toEqual(['To-do: Buy milk']);
+    });
+
+    it('picking Divider adds a divider and moves to the paragraph below it', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['']} />);
+
+      await user.type(fields()[0], '/div{Enter}After');
+
+      expect(screen.getByRole('separator')).toBeInTheDocument();
+      expect(allBlocks()).toEqual(['Paragraph: After']);
+    });
+
+    it("doesn't open for a slash in the middle of a word", async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['']} />);
+
+      await user.type(fields()[0], 'and/or');
+
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    });
+
+    it('opens after a space', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['']} />);
+
+      await user.type(fields()[0], 'Note /');
+
+      expect(screen.getByRole('listbox')).toBeInTheDocument();
+    });
+
+    it('closes when nothing matches, and Enter then splits as normal', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['']} />);
+
+      await user.type(fields()[0], '/zzz');
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+
+      await user.keyboard('{Enter}');
+      expect(texts()).toEqual(['/zzz', '']);
+    });
+
+    it('closes when the slash is deleted', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['']} />);
+
+      await user.type(fields()[0], '/{Backspace}');
+
+      expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    });
+  });
+
   describe('Backspace on block types', () => {
     it('first turns a formatted block into a paragraph, then merges it', async () => {
       const user = userEvent.setup();
