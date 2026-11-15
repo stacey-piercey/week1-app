@@ -27,7 +27,7 @@ Run the tests after every change.
 **Data flow:** `App.tsx` uses two hooks side by side:
 - `hooks/usePages.ts` holds the page list and selected page in memory (it loads them from storage once, on start). Edits update this first, so the sidebar and editor change at once.
 - `hooks/useAutosave.ts` writes edits to `lib/storage.ts` (IndexedDB, one `pages` store) 500 ms after typing stops. It saves at once on page switch, tab hide or close. Title and blocks share this one save path.
-- `localStorage` holds only the last opened page (and the theme, from step 10).
+- `localStorage` holds only the last opened page (and the theme, from step 9).
 
 **Editor:**
 - `Editor.tsx` owns one page's block list. `Block.tsx` draws one block and handles its keys. `SlashMenu.tsx` only displays; Block handles its keys.

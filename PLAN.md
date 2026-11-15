@@ -107,19 +107,22 @@ src/
 - Manual: run the *Manual checks → Block types* list.
 - *Known limits (v1):* dividers can't be removed with the mouse. Lists are separate blocks, not `<ul>`/`<ol>` markup; each block's label tells screen readers its type.
 
-**7. Delete page with confirm**
-- Component tests: the dialog names the page; Cancel and Escape keep the page; Confirm removes it and selects a neighbouring page (or the empty state); focus returns sensibly; the deleted page is still gone after a simulated reload.
+**7. Sidebar: delete and search** (old steps 7 and 8, merged because they change the same files)
+- **Delete:** each sidebar row has a trash button (shown on hover, on focus, and on the selected row). It opens a native `<dialog>`: *Delete "Title"?*, with Cancel (focused first) and Delete.
+  - Cancel, Escape or a backdrop click keeps the page and returns focus to the trash button.
+  - Delete opens the page below (or above if it was last), or the empty state. Focus moves to that row, or to "+ New page".
+  - Autosave drops any unsaved edit for the deleted page and waits for a running save, so it never shows "Couldn't save" for a page that's gone.
+- **Search:** a search box under "+ New page" filters the list by title. It's case-insensitive, matches part of a title and ignores surrounding spaces. Untitled pages match "untitled". "No pages match" shows when nothing matches. Escape or clearing restores the list. "+ New page" clears the search. While filtering, the neighbour picked after a delete comes from the visible list.
+- Unit: the search filter; autosave `discard` drops a pending edit.
+- Component tests: the dialog names the page; Cancel and Escape keep the page; Delete selects the right neighbour or the empty state; focus returns sensibly; the deleted page is still gone after a simulated reload; deleting right after typing never shows "Couldn't save"; typing filters; "No pages match"; clearing restores the list; "+ New page" clears the search.
+- Manual: run the *Manual checks → Delete and search* list.
 
-**8. Search pages**
-- Unit: case-insensitive, matches part of a title, ignores surrounding spaces.
-- Component tests: typing filters the list; you get a "No pages match" message when nothing matches; clearing the search restores the list.
-
-**9. Drag to reorder** (@dnd-kit)
+**8. Drag to reorder** (@dnd-kit)
 - Unit: the reorder function produces the correct `order` values.
 - Component tests: keyboard reorder (Space, then arrow, then Space) moves the page and the order survives a simulated reload; reordering is disabled while a search filter is active, to avoid confusing results.
 - Manual: drag with the mouse and reload.
 
-**10. Dark mode**
+**9. Dark mode**
 - Colours come only from CSS variables in `theme.css`, so dark mode means swapping the tokens.
 - The toggle cycles through System → Light → Dark, and the choice is saved.
 - Unit: `useTheme` reads and writes localStorage and follows `prefers-color-scheme` (mocked) in System mode.
@@ -162,6 +165,17 @@ Rerun the same way every time: `npm run dev`, open http://localhost:5173, and st
 11. **Long menu:** in a block near the bottom of the window, type `/` and arrow down to Code. The list scrolls so the highlighted item stays visible.
 12. **Screen reader (Narrator, Ctrl+Win+Enter):** with the menu open, Up/Down announce each option's name.
 13. **Reload:** with one block of each type and a ticked to-do, wait for "Saved" and reload. Everything comes back the same.
+
+### Delete and search (step 7)
+1. **Trash button:** hover a row and the trash button appears. It's always visible on the open page's row. Tab reaches it.
+2. **Delete the open page:** with 3 pages, open the middle one and delete it. The page below opens.
+3. **Cancel:** open the dialog and press Cancel, then Escape, then click the backdrop. The page stays each time, and focus is back on the trash button.
+4. **Last page:** delete pages until none are left. The empty state shows, and focus is on "+ New page".
+5. **Reload:** reload after deleting. The deleted pages stay gone.
+6. **Delete right after typing:** type in a page and delete it within half a second. No "Couldn't save" appears.
+7. **Search:** type `GRO` to find "Groceries". Nonsense text shows "No pages match". Escape brings the full list back.
+8. **New page while filtering:** with a search active, press "+ New page". The search clears and the new page shows.
+9. **Screen reader (Narrator):** the dialog title is read when it opens; the trash button reads as *Delete "Title"*.
 
 ## Verification
 - Run `npm test` for all unit and component tests (Vitest) and `npm run dev` to try the app at http://localhost:5173.
