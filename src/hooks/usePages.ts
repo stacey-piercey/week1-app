@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { createPage, deletePage, listPages } from '../lib/storage';
+import { movePage } from '../lib/reorder';
+import { createPage, deletePage, listPages, reorderPages } from '../lib/storage';
 import type { Block, Page } from '../types';
 
 export const SELECTED_PAGE_KEY = 'notes.selectedPageId';
@@ -100,5 +101,43 @@ export function usePages() {
     return true;
   }, []);
 
-  return { pages, selectedId, loading, addPage, selectPage, renamePage, setBlocks, removePage };
+  /**
+   * Moves page `activeId` to where `overId` is. The sidebar updates at once;
+   * the new order is then saved. If the save fails, the old order comes back
+   * and this returns false.
+   */
+  const reorderPage = useCallback(
+    async (activeId: string, overId: string) => {
+      const next = movePage(pages, activeId, overId);
+      if (next === pages) return true;
+      // Functional update, so a title typed meanwhile isn't lost.
+      setPages((prev) => movePage(prev, activeId, overId));
+      try {
+        await reorderPages(next.map((p) => p.id));
+        return true;
+      } catch (error) {
+        console.error('Could not reorder pages', error);
+        const oldOrder = new Map(pages.map((p) => [p.id, p.order]));
+        setPages((prev) =>
+          prev
+            .map((p) => ({ ...p, order: oldOrder.get(p.id) ?? p.order }))
+            .sort((a, b) => a.order - b.order),
+        );
+        return false;
+      }
+    },
+    [pages],
+  );
+
+  return {
+    pages,
+    selectedId,
+    loading,
+    addPage,
+    selectPage,
+    renamePage,
+    setBlocks,
+    removePage,
+    reorderPage,
+  };
 }
