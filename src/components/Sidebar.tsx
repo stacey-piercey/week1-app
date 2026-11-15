@@ -14,7 +14,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { displayTitle, filterPages } from '../lib/search';
 import type { Page } from '../types';
 import ConfirmDialog from './ConfirmDialog';
@@ -31,6 +31,8 @@ interface SidebarProps {
   onDelete: (id: string, nextId: string | null) => void | Promise<void>;
   /** Move page `activeId` to where page `overId` is. */
   onReorder?: (activeId: string, overId: string) => unknown;
+  /** Shown at the bottom of the sidebar (the theme toggle). */
+  footer?: ReactNode;
 }
 
 const dragInstructions =
@@ -58,6 +60,7 @@ export default function Sidebar({
   onSelect,
   onDelete,
   onReorder,
+  footer,
 }: SidebarProps) {
   const sidebarRef = useRef<HTMLElement>(null);
   const newPageRef = useRef<HTMLButtonElement>(null);
@@ -173,6 +176,7 @@ export default function Sidebar({
           </DndContext>
         )}
       </nav>
+      {footer && <div className="sidebar-footer">{footer}</div>}
       {pendingDelete && (
         <ConfirmDialog
           title={`Delete "${displayTitle(pendingDelete.title)}"?`}

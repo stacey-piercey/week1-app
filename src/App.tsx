@@ -3,8 +3,10 @@ import Editor, { type EditorHandle } from './components/Editor';
 import PageTitle from './components/PageTitle';
 import SaveStatus from './components/SaveStatus';
 import Sidebar from './components/Sidebar';
+import ThemeToggle from './components/ThemeToggle';
 import { useAutosave } from './hooks/useAutosave';
 import { usePages } from './hooks/usePages';
+import { useTheme } from './hooks/useTheme';
 import type { Block } from './types';
 
 export default function App() {
@@ -21,6 +23,7 @@ export default function App() {
   } = usePages();
   const selected = pages.find((p) => p.id === selectedId);
   const autosave = useAutosave();
+  const theme = useTheme();
   const { flush, schedule, clearStatus, discard } = autosave;
 
   // The page just made with "+ New page". Only its title gets autofocus,
@@ -91,6 +94,7 @@ export default function App() {
         onSelect={handleSelect}
         onDelete={handleDelete}
         onReorder={reorderPage}
+        footer={<ThemeToggle mode={theme.mode} onCycle={theme.cycle} />}
       />
       <main className="content">
         <div className="content-inner">

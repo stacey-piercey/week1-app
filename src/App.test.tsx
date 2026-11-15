@@ -369,7 +369,7 @@ describe('App', () => {
   describe('reorder', () => {
     const pageNames = () =>
       screen
-        .getAllByRole('button', { name: /^(?!Delete|Reorder|New page)/ })
+        .getAllByRole('button', { name: /^(?!Delete|Reorder|New page|Theme)/ })
         .map((b) => b.textContent);
 
     it('a keyboard move is still there after a reload', async () => {
@@ -409,6 +409,31 @@ describe('App', () => {
       await user.click(screen.getByRole('button', { name: 'New page' }));
 
       await waitFor(() => expect(pageNames()).toEqual(['Beta', 'Alpha', 'Untitled']));
+    });
+  });
+
+  describe('theme', () => {
+    const htmlTheme = () => document.documentElement.dataset.theme;
+
+    it('the toggle sets data-theme on <html>, and the choice survives a reload', async () => {
+      const user = userEvent.setup();
+      const first = render(<App />);
+      await screen.findByText('No pages yet');
+      expect(htmlTheme()).toBe('light'); // System, and the system is light
+
+      await user.click(screen.getByRole('button', { name: 'Theme: System' }));
+      expect(htmlTheme()).toBe('light');
+      await user.click(screen.getByRole('button', { name: 'Theme: Light' }));
+      expect(htmlTheme()).toBe('dark');
+      expect(screen.getByRole('button', { name: 'Theme: Dark' })).toHaveFocus();
+
+      // Simulated reload.
+      first.unmount();
+      delete document.documentElement.dataset.theme;
+      render(<App />);
+
+      expect(await screen.findByRole('button', { name: 'Theme: Dark' })).toBeInTheDocument();
+      expect(htmlTheme()).toBe('dark');
     });
   });
 });

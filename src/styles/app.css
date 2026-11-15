@@ -40,7 +40,8 @@ body {
 }
 
 .new-page,
-.page-item {
+.page-item,
+.theme-toggle {
   display: block;
   width: 100%;
   padding: 6px 8px;
@@ -56,15 +57,35 @@ body {
   white-space: nowrap;
 }
 
-.new-page {
+.new-page,
+.theme-toggle {
   color: var(--color-muted);
 }
 
 /* The row, not the name button, carries hover, so the highlight stays
    while the pointer is over the trash button. */
 .new-page:hover,
+.theme-toggle:hover,
 .page-row:hover .page-item {
   background: var(--color-hover);
+}
+
+/* Theme toggle, pinned to the bottom of the sidebar */
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+
+.theme-toggle-icon {
+  display: inline-block;
+  width: 1.25em;
+  text-align: center;
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: -2px;
 }
 
 .page-item[aria-current='page'] {
