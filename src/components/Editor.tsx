@@ -1,5 +1,16 @@
 import { useCallback, useImperativeHandle, useLayoutEffect, useRef, type Ref } from 'react';
-import { deleteEmptyBlock, mergeWithPrevious, setBlockText, splitBlock, type CursorTarget, type EditResult } from '../lib/blocks';
+import {
+  applyShortcut,
+  backspaceAtStart,
+  insertParagraphAfter,
+  isTextBlock,
+  listNumbers,
+  setBlockText,
+  splitBlock,
+  toggleChecked,
+  type CursorTarget,
+  type EditResult,
+} from '../lib/blocks';
 import { offsetNearX } from '../lib/caret';
 import type { Block as BlockData } from '../types';
 import Block from './Block';
@@ -50,7 +61,8 @@ export default function Editor({ blocks, onChange, ref }: EditorProps) {
     ref,
     () => ({
       focusStart: () => {
-        if (blocks[0]) placeCursor({ id: blocks[0].id, offset: 0 });
+        const first = blocks.find(isTextBlock);
+        if (first) placeCursor({ id: first.id, offset: 0 });
       },
     }),
     [blocks, placeCursor],
@@ -62,9 +74,18 @@ export default function Editor({ blocks, onChange, ref }: EditorProps) {
     onChange(result.blocks);
   };
 
+  const handleTextChange = (id: string, text: string, caret: number) => {
+    const shortcut = applyShortcut(blocks, id, text, caret);
+    if (shortcut) applyEdit(shortcut);
+    else onChange(setBlockText(blocks, id, text));
+  };
+
   const handleLeave = (id: string, direction: 'up' | 'down', x: number): boolean => {
-    const index = blocks.findIndex((b) => b.id === id);
-    const target = blocks[direction === 'up' ? index - 1 : index + 1];
+    // Step over dividers: they can't take the cursor.
+    const step = direction === 'up' ? -1 : 1;
+    let i = blocks.findIndex((b) => b.id === id) + step;
+    while (blocks[i] && !isTextBlock(blocks[i])) i += step;
+    const target = blocks[i];
     const el = target && inputs.current.get(target.id);
     if (!el) return false;
     // Going up lands on the block's last line, going down on its first line.
@@ -73,18 +94,21 @@ export default function Editor({ blocks, onChange, ref }: EditorProps) {
     return true;
   };
 
+  const numbers = listNumbers(blocks);
+
   return (
     <div className="editor">
       {blocks.map((block) => (
         <Block
           key={block.id}
           block={block}
+          number={numbers.get(block.id)}
           registerInput={registerInput}
-          onTextChange={(text) => onChange(setBlockText(blocks, block.id, text))}
+          onTextChange={(text, caret) => handleTextChange(block.id, text, caret)}
           onSplit={(start, end) => applyEdit(splitBlock(blocks, block.id, start, end))}
-          onBackspaceAtStart={() =>
-            applyEdit(mergeWithPrevious(blocks, block.id) ?? deleteEmptyBlock(blocks, block.id))
-          }
+          onExitCode={() => applyEdit(insertParagraphAfter(blocks, block.id))}
+          onBackspaceAtStart={() => applyEdit(backspaceAtStart(blocks, block.id))}
+          onToggleChecked={() => onChange(toggleChecked(blocks, block.id))}
           onLeave={(direction, x) => handleLeave(block.id, direction, x)}
         />
       ))}

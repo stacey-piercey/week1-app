@@ -2,19 +2,29 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it } from 'vitest';
-import type { Block } from '../types';
+import type { Block, BlockType } from '../types';
 import Editor from './Editor';
 
+/** A starting block: plain text means a paragraph. */
+type Initial = string | [BlockType, string];
+
 /** Holds the blocks in state, the way App does, so edits re-render. */
-function Harness({ initial }: { initial: string[] }) {
+function Harness({ initial }: { initial: Initial[] }) {
   const [blocks, setBlocks] = useState<Block[]>(() =>
-    initial.map((text, i) => ({ id: `b${i}`, type: 'p', text })),
+    initial.map((item, i) => {
+      const [type, text] = typeof item === 'string' ? (['p', item] as const) : item;
+      return { id: `b${i}`, type, text };
+    }),
   );
   return <Editor blocks={blocks} onChange={setBlocks} />;
 }
 
 const fields = () => screen.getAllByRole('textbox', { name: 'Paragraph' }) as HTMLTextAreaElement[];
 const texts = () => fields().map((f) => f.value);
+/** Every text block, in page order, as "label: text". */
+const allBlocks = () =>
+  (screen.getAllByRole('textbox') as HTMLTextAreaElement[]).map((f) => `${f.getAttribute('aria-label')}: ${f.value}`);
+const field = (label: string) => screen.getByRole('textbox', { name: label }) as HTMLTextAreaElement;
 
 // These tests check the cursor *logic*. jsdom has no layout, so text never
 // wraps here: wrapped-text Up/Down is in PLAN.md's manual checklist instead.
@@ -139,6 +149,159 @@ describe('Editor', () => {
 
       await user.click(fields()[1]);
       await user.keyboard('{Shift>}{ArrowUp}{/Shift}');
+      expect(fields()[1]).toHaveFocus();
+    });
+
+    it('Up and Down skip over a divider', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['Above', ['divider', ''], 'Below']} />);
+
+      await user.click(fields()[1]);
+      await user.keyboard('{ArrowUp}');
+      expect(fields()[0]).toHaveFocus();
+      await user.keyboard('{ArrowDown}');
+      expect(fields()[1]).toHaveFocus();
+    });
+  });
+
+  describe('markdown shortcuts', () => {
+    it.each([
+      ['# ', 'Heading 1'],
+      ['## ', 'Heading 2'],
+      ['### ', 'Heading 3'],
+      ['- ', 'Bulleted list item'],
+      ['1. ', 'Numbered list item'],
+      ['[[] ', 'To-do'], // "[[" types one "[" in user-event
+      ['> ', 'Quote'],
+      ['```', 'Code'],
+    ])('typing "%s" makes a %s, and the next text goes into it', async (keys, label) => {
+      const user = userEvent.setup();
+      render(<Harness initial={['']} />);
+
+      await user.type(fields()[0], `${keys}Hello`);
+
+      expect(allBlocks()).toEqual([`${label}: Hello`]);
+      expect(field(label)).toHaveFocus();
+    });
+
+    it('typing "---" makes a divider with an empty paragraph below, cursor there', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['']} />);
+
+      await user.type(fields()[0], '---After');
+
+      expect(screen.getByRole('separator')).toBeInTheDocument();
+      expect(allBlocks()).toEqual(['Paragraph: After']);
+    });
+
+    it('a marker typed in front of existing text converts the block and keeps the text', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['Title']} />);
+
+      await user.type(fields()[0], '# ', { initialSelectionStart: 0, initialSelectionEnd: 0 });
+
+      expect(allBlocks()).toEqual(['Heading 1: Title']);
+    });
+
+    it("doesn't fire in the middle of text", async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['']} />);
+
+      await user.type(fields()[0], 'a - b');
+
+      expect(allBlocks()).toEqual(['Paragraph: a - b']);
+    });
+  });
+
+  describe('lists', () => {
+    it('Enter in a list item continues the list', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={[['bullet', '']]} />);
+
+      await user.type(field('Bulleted list item'), 'Milk{Enter}Eggs');
+
+      expect(allBlocks()).toEqual(['Bulleted list item: Milk', 'Bulleted list item: Eggs']);
+    });
+
+    it('Enter on an empty list item turns it into a paragraph', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={[['todo', '']]} />);
+
+      await user.type(screen.getByRole('textbox', { name: 'To-do' }), 'Call{Enter}{Enter}Note');
+
+      expect(allBlocks()).toEqual(['To-do: Call', 'Paragraph: Note']);
+    });
+
+    it('numbered items count up and restart after another block', async () => {
+      render(
+        <Harness
+          initial={[
+            ['number', 'a'],
+            ['number', 'b'],
+            ['number', 'c'],
+            'break',
+            ['number', 'd'],
+          ]}
+        />,
+      );
+
+      const markers = [...document.querySelectorAll('.block-marker')].map((m) => m.textContent);
+      expect(markers).toEqual(['1.', '2.', '3.', '1.']);
+    });
+
+    it('the to-do checkbox ticks and unticks', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={[['todo', 'Call']]} />);
+      const box = screen.getByRole('checkbox', { name: 'Done' });
+
+      await user.click(box);
+      expect(box).toBeChecked();
+      await user.click(box);
+      expect(box).not.toBeChecked();
+    });
+  });
+
+  describe('code blocks', () => {
+    it('Enter adds a newline instead of a new block', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={[['code', '']]} />);
+
+      await user.type(field('Code'), 'a{Enter}b');
+
+      expect(allBlocks()).toEqual(['Code: a\nb']);
+    });
+
+    it('Ctrl+Enter adds a paragraph below and moves there', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={[['code', 'x']]} />);
+
+      await user.type(field('Code'), '{Control>}{Enter}{/Control}After');
+
+      expect(allBlocks()).toEqual(['Code: x', 'Paragraph: After']);
+    });
+  });
+
+  describe('Backspace on block types', () => {
+    it('first turns a formatted block into a paragraph, then merges it', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['Hello', ['h2', ' world']]} />);
+
+      await user.type(field('Heading 2'), '{Backspace}', { initialSelectionStart: 0, initialSelectionEnd: 0 });
+      expect(allBlocks()).toEqual(['Paragraph: Hello', 'Paragraph:  world']);
+      expect(fields()[1]).toHaveFocus();
+
+      await user.keyboard('{Backspace}');
+      expect(allBlocks()).toEqual(['Paragraph: Hello world']);
+    });
+
+    it('at the start of the block below a divider removes the divider', async () => {
+      const user = userEvent.setup();
+      render(<Harness initial={['Above', ['divider', ''], 'Below']} />);
+
+      await user.type(fields()[1], '{Backspace}', { initialSelectionStart: 0, initialSelectionEnd: 0 });
+
+      expect(screen.queryByRole('separator')).not.toBeInTheDocument();
+      expect(allBlocks()).toEqual(['Paragraph: Above', 'Paragraph: Below']);
       expect(fields()[1]).toHaveFocus();
     });
   });
