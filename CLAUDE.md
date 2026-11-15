@@ -35,7 +35,7 @@ Run the tests after every change.
 - `lib/blockTypes.ts` is the single list of block types (menu names, screen-reader labels, search words).
 - `lib/caret.ts` measures wrapped lines with a hidden mirror element, for Up/Down between blocks.
 
-**Styles:** all colours and fonts are CSS variables in `styles/theme.css`. `styles/app.css` uses only those.
+**Styles:** all colours and fonts are CSS variables in `styles/theme.css`. `styles/app.css` uses only those. Dark mode redefines the same tokens under `:root[data-theme='dark']`; `hooks/useTheme.ts` sets `data-theme`, and an inline script in `index.html` sets it before first paint. `styles/theme.test.ts` checks WCAG AA contrast for both themes, so run it after changing a colour.
 
 **Tests:** sit next to the file they test. jsdom has no layout, so anything that depends on wrapping or sizing is in `PLAN.md` → *Manual checks*.
 

@@ -127,9 +127,16 @@ src/
 **9. Dark mode**
 - Colours come only from CSS variables in `theme.css`, so dark mode means swapping the tokens.
 - The toggle cycles through System → Light → Dark, and the choice is saved.
-- Unit: `useTheme` reads and writes localStorage and follows `prefers-color-scheme` (mocked) in System mode.
-- Component tests: the toggle sets `data-theme` on `<html>`.
-- Manual: check both themes look right, and that System follows the Windows setting. Contrast check: text and background meet WCAG AA in both themes.
+- **Decided at step 9:**
+  - **Toggle:** one button at the bottom of the sidebar (◐ / ☀ / ☾ *Theme: System / Light / Dark*).
+  - **How it switches:** `useTheme` always sets `<html data-theme="light|dark">` to the theme shown. `theme.css` has a `:root[data-theme='dark']` block that redefines every colour token, plus `color-scheme` so native parts match.
+  - **No white flash:** a small inline script in `index.html` sets `data-theme` before the first paint. A test checks it picks the same theme as the hook.
+  - **Contrast:** `styles/theme.test.ts` checks WCAG AA in both themes (4.5:1 for text, 3:1 for icons and focus rings). It found two light pairs under 4.5:1, so the light muted grey went from `#6b6b6b` to `#616161`.
+  - **New token `--color-danger-text`:** the trash icon's hover red. In dark mode it's lighter than the Delete button's red, which has to stay dark enough for white text.
+- Unit: `useTheme` reads and writes localStorage and follows `prefers-color-scheme` (mocked) in System mode; the contrast pairs; the boot script agrees with the hook.
+- Component tests: the toggle sets `data-theme` on `<html>`, and the choice survives a simulated reload.
+- *Test note:* jsdom has no `matchMedia`; `src/test/matchMedia.ts` fakes it and can flip the system theme. Vitest empties CSS by default, so `vite.config.ts` lets it read `theme.css`.
+- Manual: run the *Manual checks → Dark mode* list.
 
 ## Defaults I've assumed (tell me if any are wrong)
 - TypeScript rather than plain JS. It catches mistakes early, and you can still read it.
@@ -188,6 +195,14 @@ Rerun the same way every time: `npm run dev`, open http://localhost:5173, and st
 6. **Screen reader (Narrator):** on a grip you hear *Reorder "Title"* and the instructions. Picking up, moving and dropping each announce the page name and position (e.g. *"Groceries moved to position 2 of 3"*).
 7. **While searching:** type in the search box. There are no grips. Clear the search and they come back.
 8. **New page after reorder:** reorder, then press "+ New page". The new page goes to the bottom.
+
+### Dark mode (step 9)
+1. **Cycle:** click the toggle at the bottom of the sidebar. It reads System → Light → Dark → System, and the colours change at once.
+2. **Remembered:** pick Dark and reload. It's still Dark, and there's **no white flash** while loading. Do the same with Light.
+3. **System follows Windows:** set the toggle to System. In Windows Settings → Personalisation → Colours → *Choose your mode*, switch Light/Dark. The app follows without a reload.
+4. **Everything is themed:** in Dark, check the sidebar, search box, hovered and open rows, the grip and trash icons (the trash turns red on hover), the delete dialog and its backdrop, the slash menu, a code block, a quote bar, the divider, the to-do checkbox, focus rings (Tab around) and scrollbars. Nothing stays bright white.
+5. **Light theme muted text:** "+ New page", Untitled and placeholders are a touch darker than before, and still clearly grey.
+6. **Screen reader (Narrator):** the toggle reads as *Theme: System, button*; after Enter, it reads the new mode.
 
 ## Verification
 - Run `npm test` for all unit and component tests (Vitest) and `npm run dev` to try the app at http://localhost:5173.
